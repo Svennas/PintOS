@@ -374,6 +374,15 @@ power_off (void)
   printf ("Powering off...\n");
   serial_flush ();
   outw(0xB004, 0x2000);
+  outb(0xF4, 0x30);
+
+  /* For newer versions of qemu, you must run with -device
+   * isa-debug-exit, which exits on any write to an IO port (by
+   * default 0x501).  Qemu's exit code is double the value plus one,
+   * so there is no way to exit cleanly.  We use 0x31 which should
+   * result in a qemu exit code of 0x63.  */
+  outb (0x501, 0x31);
+
   for (p = s; *p != '\0'; p++)
     outb (0x8900, *p);
   asm volatile ("cli; hlt" : : : "memory");

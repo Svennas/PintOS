@@ -475,7 +475,7 @@ sub run_qemu {
     my (@cmd) = ('qemu');
     for my $iface (0...3) {
 	my ($option) = ('-hda', '-hdb', '-hdc', '-hdd')[$iface];
-	push (@cmd, $option, $disks_by_iface[$iface]{FILE_NAME})
+	push (@cmd, '-drive', "file=" . $disks_by_iface[$iface]{FILE_NAME} . ",index=$iface,format=raw")
 	  if defined $disks_by_iface[$iface]{FILE_NAME};
     }
     push (@cmd, '-m', $mem);
@@ -485,7 +485,23 @@ sub run_qemu {
     push (@cmd, '-S') if $debug eq 'monitor';
     push (@cmd, '-s', '-S') if $debug eq 'gdb';
     push (@cmd, '-monitor', 'null') if $vga eq 'none' && $debug eq 'none';
-    run_command (@cmd);
+
+    # Insert a device that lets us shutdown Pintos. See https://wiki.osdev.org/Shutdown for details
+    push (@cmd, '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04');
+
+    # When using isa-debug-exit, we can not exit QEMU cleanly. We exit with 0x30, which will make QEMU exit
+    # with the code 0x30*2 + 1 = 97, and therefore we treat 97 as success as well.
+    my ($exit) = xsystem (@cmd);
+    if (WIFEXITED($exit)) {
+	$exit = WEXITSTATUS($exit);
+	if ($exit == 97) {
+	    # We use this code to exit cleanly from within Pintos (see https://wiki.osdev.org/Shutdown)
+	    # since we can not exit with code 0 using the debug shutdown device in QEMU.
+	    $exit = 0;
+	}
+    }
+    die "command failed\n" if $exit;
+
 }
 
 # player_unsup($flag)
@@ -763,9 +779,10 @@ sub xsystem {
 		}
 
 		# Read and print out pipe data.
-		my ($len) = length ($buf);
+		my ($len) = length ($buf);	
+		my ($readcount) = sysread ($in, $buf, 4096, $len);
 		waitpid ($pid, 0), last
-		  if sysread ($in, $buf, 4096, $len) <= 0;
+		  if $readcount <= 0;
 		print substr ($buf, $len);
 
 		# Remove full lines from $buf and scan them for keywords.
