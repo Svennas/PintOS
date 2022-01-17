@@ -197,7 +197,7 @@ struct Elf32_Phdr
 
 static bool setup_stack (void **esp);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
-static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
+static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t uoffset,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
 
@@ -315,7 +315,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
           if (validate_segment (&phdr, file)) 
             {
               bool writable = (phdr.p_flags & PF_W) != 0;
-              uint32_t file_page = phdr.p_offset & ~PGMASK;
+              uint32_t file_offset = phdr.p_offset;
               uint32_t mem_page = phdr.p_vaddr & ~PGMASK;
               uint32_t page_offset = phdr.p_vaddr & PGMASK;
               uint32_t read_bytes, zero_bytes;
@@ -323,18 +323,19 @@ load (const char *file_name, void (**eip) (void), void **esp)
                 {
                   /* Normal segment.
                      Read initial part from disk and zero the rest. */
-                  read_bytes = page_offset + phdr.p_filesz;
+
+                  read_bytes = phdr.p_filesz;
                   zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
-                                - read_bytes);
+                                - read_bytes - page_offset);
                 }
               else 
                 {
                   /* Entirely zero.
                      Don't read anything from disk. */
                   read_bytes = 0;
-                  zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
+                  zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE) - page_offset;
                 }
-              if (!load_segment (file, file_page, (void *) mem_page,
+              if (!load_segment (file, file_offset, (void *) mem_page, page_offset,
                                  read_bytes, zero_bytes, writable))
                 goto done;
             }
@@ -419,45 +420,62 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
 static bool
-load_segment (struct file *file, off_t ofs, uint8_t *upage,
+load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t page_offset,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
-  ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
+  ASSERT ((page_offset + read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
-  ASSERT (ofs % PGSIZE == 0);
 
+  struct thread *t = thread_current();
+  
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
          We will read PAGE_READ_BYTES bytes from FILE
          and zero the final PAGE_ZERO_BYTES bytes. */
-      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+      size_t page_read_bytes = page_offset + read_bytes;
+      if (page_read_bytes > PGSIZE)
+            page_read_bytes = PGSIZE;
+
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
+      bool new_kpage = false;
+      uint8_t *kpage = pagedir_get_page (t->pagedir, upage);
+      if (!kpage)
+      {
+            new_kpage = true;
+            kpage = palloc_get_page (PAL_USER);
+      }
+
       if (kpage == NULL)
         return false;
 
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      if (file_read (file, kpage + page_offset, page_read_bytes - page_offset) != (int) (page_read_bytes - page_offset))
+      {
+        if (new_kpage)
+		palloc_free_page (kpage);
+        return false;
+
+      }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      /* Add the page to the process's address space. */       
+      if (new_kpage)
+      {
+            if (!install_page (upage, kpage, writable))
+            {
+                  palloc_free_page (kpage);
+                  return false;
+            }
+      }
 
       /* Advance. */
-      read_bytes -= page_read_bytes;
+      read_bytes -= page_read_bytes - page_offset;
       zero_bytes -= page_zero_bytes;
+      page_offset = 0;		
       upage += PGSIZE;
     }
   return true;
