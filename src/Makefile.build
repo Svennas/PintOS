@@ -79,7 +79,7 @@ kernel.o: threads/kernel.lds.s $(OBJECTS)
 	$(LD) -T $< -o $@ $(OBJECTS)
 
 kernel.bin: kernel.o
-	$(OBJCOPY) -O binary -R .note -R .comment -S $< $@.tmp
+	$(OBJCOPY) -O binary -R .note -R .note.* -R .comment -S $< $@.tmp
 	dd if=$@.tmp of=$@ bs=4096 conv=sync
 	rm $@.tmp
 
@@ -87,7 +87,9 @@ threads/loader.o: threads/loader.S kernel.bin
 	$(CC) -c $< -o $@ $(ASFLAGS) $(CPPFLAGS) $(DEFINES) -DKERNEL_LOAD_PAGES=`perl -e 'print +(-s "kernel.bin") / 4096;'`
 
 loader.bin: threads/loader.o
-	$(LD) -N -e start -Ttext 0x7c00 --oformat binary -o $@ $<
+	$(LD) -N -e start -Ttext 0x7c00 -o $@.tmp $<
+	$(OBJCOPY) -O binary -R .note -R .note.* -R .comment -S $@.tmp $@
+	rm $@.tmp
 
 os.dsk: loader.bin kernel.bin
 	cat $^ > $@
