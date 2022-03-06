@@ -24,6 +24,9 @@ int main(void)
 	read(ret, &seed[0], R_BYTES);
 	close(ret);
 
+	for(char *rptr = &seed[0]; rptr < &seed[0]+R_BYTES; rptr++)
+		if (!*rptr) *rptr = 0xaf;
+
 	random_init((int)seed[0]);
 	len = strlen(pfswriter);
 
