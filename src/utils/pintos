@@ -63,6 +63,7 @@ sub parse_command_line {
 		    "T|timeout=i" => \$timeout,
 		    "k|kill-on-failure" => \$kill_on_failure,
 
+            "w|vga" => sub { set_vga ('window'); },
 		    "v|no-vga" => sub { set_vga ('none'); },
 		    "s|no-serial" => sub { $serial = 0; },
 		    "t|terminal" => sub { set_vga ('terminal'); },
@@ -87,7 +88,7 @@ sub parse_command_line {
 
     $sim = "bochs" if !defined $sim;
     $debug = "none" if !defined $debug;
-    $vga = "window" if !defined $vga;
+    $vga = "none" if !defined $vga;
 
     undef $timeout, print "warning: disabling timeout with --$debug\n"
       if defined ($timeout) && $debug ne 'none';
@@ -114,8 +115,9 @@ Debugger selection:
   --no-debug               (default) No debugger
   --monitor                Debug with simulator's monitor
   --gdb                    Debug with gdb
-Display options: (default is both VGA and serial)
-  -v, --no-vga             No VGA display or keyboard
+Display options: (default is serial only)
+  -w, --vga                VGA and keyboard
+  -v, --no-vga             (default) No VGA display or keyboard
   -s, --no-serial          No serial input or output
   -t, --terminal           Display VGA in terminal (Bochs only)
 Timing options: (Bochs only)
