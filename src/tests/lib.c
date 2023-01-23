@@ -5,6 +5,8 @@
 #include <string.h>
 #include <syscall.h>
 
+// Note: test_name is overridden in some tests, and not in others.
+__attribute__((weak))
 const char *test_name;
 bool quiet = false;
 
