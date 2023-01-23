@@ -73,6 +73,7 @@ consume_some_resources_and_die (int seed)
     {
       case 0:
         *(int *) NULL = 42;
+        break;
 
       case 1:
         return *(int *) NULL;
@@ -82,6 +83,7 @@ consume_some_resources_and_die (int seed)
 
       case 3:
         *PHYS_BASE = 42;
+        break;
 
       case 4:
         open ((char *)PHYS_BASE);
