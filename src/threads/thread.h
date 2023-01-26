@@ -95,7 +95,7 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    /* Added for lab 1. */
+    /* Added for lab 1. test*/
     struct file *fd_list[130];          /* Struct file pointers to 
                                            all opened files. */
 #endif
