@@ -7,6 +7,7 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include <list.h>
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -16,6 +17,9 @@
 #if TIMER_FREQ > 1000
 #error TIMER_FREQ <= 1000 recommended
 #endif
+
+/* Keeps track if the sleep_list has been initialized. */
+static bool init = false;
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
@@ -96,11 +100,14 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  /* Create a sleeping_thread for every thread that is put to
+   sleep. The current thread is saved in the sleeping_threads
+   semaphore. */
+  struct sleeping_thread new;
+  new.ticks = timer_ticks () + ticks;
+  add_sorted (&new.elem);
+  sema_init (&new.binary, 0);
+  sema_down (&new.binary);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -137,6 +144,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  check_sleeping_threads ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -202,3 +210,93 @@ real_time_sleep (int64_t num, int32_t denom)
     }
 }
 
+/* Checks all the sleeping threads in sleep_list and checks
+   if any of them should be awakened. If there are any, awake the
+   threads with sema_up() from their related semaphore. */
+void
+check_sleeping_threads ()
+{
+  /* Try to initialize sleep_list. If already done, nothing happens. */
+  init_sleep_list ();
+  while (!list_empty (&sleep_list))
+  {
+    struct list_elem *e = list_front (&sleep_list);
+    struct sleeping_thread *s = list_entry
+    (e, struct sleeping_thread, elem);
+    if (s->ticks > timer_ticks ())
+    {
+      /* Stop looping if ticks are bigger than timer_ticks.
+         Works because the sleep_list is sorted. */
+      break;
+    }
+    else
+    {
+      /* Remove all elements from sleep_list whose ticks are
+         bigger than timer_ticks (which means the thread is
+         done sleeping). */
+      e = list_pop_front (&sleep_list);
+      /* Release the sleeping thread. */
+      sema_up (&s->binary);
+    }
+  }
+}
+
+/* This function is called everytime timer_sleep() is used on a thread.
+   The function puts the element to the new struct sleeping_thread
+   (that's related to the current thread that is put to sleep)
+   in the sleep_list sorted after the amount of ticks it should sleep. */
+void
+add_sorted (struct list_elem *new_elem)
+{
+  /* Try to initialize sleep_list. If already done, nothing happens. */
+  init_sleep_list ();
+  /* If sleep_list is empty, just add the element. */
+  if (list_empty (&sleep_list))
+  {
+    list_push_back (&sleep_list, new_elem);
+  }
+  else
+  {
+    struct sleeping_thread *new_struct = list_entry
+        (new_elem, struct sleeping_thread, elem);
+    struct list_elem *e = list_front (&sleep_list);
+    struct sleeping_thread *s = list_entry
+    (e, struct sleeping_thread, elem);
+    /* Loop until the last element is reached or
+       new_struct's ticks is smaller than an elements ticks. */
+    while (e->next != NULL && new_struct->ticks > s->ticks)
+    {
+      e = e->next;
+      s = list_entry (e, struct sleeping_thread, elem);
+    }
+    /* Insert the new element in sleep_list. */
+    list_insert (e, new_elem);
+  }
+}
+
+/* Prints the ticks related to the elements in the sleep_list.
+   Prints nothing if no elements are in sleep_list. */
+void
+print_sleep_list () {
+  printf("Printing sleep_list\n");
+  struct list_elem *e;
+  e = list_front (&sleep_list);
+  while (e->next != NULL)
+  {
+    /* Loop until last element. */
+    struct sleeping_thread *s = list_entry
+    (e, struct sleeping_thread, elem);
+    printf("%" PRId64 "\n", s->ticks);
+    e = e->next;
+  }
+}
+
+/* Initializes the sleep_list. Only happens once when init is false. */
+void
+init_sleep_list () {
+  if (!init) {
+    list_init (&sleep_list);
+    /* Put init to false so sleep_list isn't initialized again. */
+    init = true;
+  }
+}

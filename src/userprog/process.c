@@ -88,6 +88,10 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  int i = 0;
+  while(i == 0) {   // Added inf loop for Lab 1
+  }
+  printf("out\n");
   return -1;
 }
 
