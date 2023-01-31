@@ -13,7 +13,7 @@ void process_activate (void);
 /* Struct to replace fn_copy when using thread_create. Contains char *copy
    to replace fn_copy to setup stack and semaphore block to block the
    parent thread during setup of child thread. */
-/*struct synch
+/*struct synch*/
 /* <<<< Added for lab 3 >>>> */
 /*{
   char *copy;

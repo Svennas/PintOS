@@ -93,7 +93,7 @@ static void
 start_process (void *file_name_)
 {     /* <<<< This function has been changed for lab 3 >>>> */
   printf("in start_process\n");
-  struct parent_child *child = (struct parent_child*)child_thread; //Get given child thread
+  struct parent_child *child; //= (struct parent_child*)child_thread; //Get given child thread
   char *file_name = child->thread_name;
 
   struct intr_frame if_;
