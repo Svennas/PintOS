@@ -94,7 +94,7 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
   /* Added in lab 3*/
-  list_init(&initial_thread->child_status_list);
+  //list_init(&initial_thread->child_status_list);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
