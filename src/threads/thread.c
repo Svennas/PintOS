@@ -93,8 +93,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  /* Added in lab 3*/
-  //list_init(&initial_thread->child_status_list);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -163,7 +161,6 @@ tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  printf("thread create start\n");
   struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
@@ -197,8 +194,6 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  printf("thread create end\n");
-
   return tid;
 }
 
@@ -287,9 +282,7 @@ thread_exit (void)
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
-  printf("before status\n");
   thread_current ()->status = THREAD_DYING;
-  printf("after status\n");
   schedule ();
   NOT_REACHED ();
 }

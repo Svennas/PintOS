@@ -94,10 +94,6 @@ syscall_handler (struct intr_frame *f)
 /* Shuts down the whole system by using power_off()
 (declared in threads/init.h). */
 void halt (void) {
-  //-------------------------------
-  // Here is the problem. File named test0 doesn't get removed 
-  // after each test
-  // filesys_remove("test0");
   power_off ();
 }
 
@@ -191,11 +187,6 @@ int write (int fd, const void *buffer, unsigned size)
 thread and destroy it. */
 void exit (int status)
 {
-  for(int i = FD_START; i < FD_END; i++) {
-    close(i);
-  }
-  printf(" \n");
-  printf("exit function\n");
   thread_exit();
 }
 
@@ -205,8 +196,5 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
-  printf(" \n");
-  printf("exec function\n");
-
   return process_execute (cmd_line);
 }

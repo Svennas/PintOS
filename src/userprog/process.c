@@ -39,52 +39,13 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /* Creates a new parent_child struct for the parent and the soon to be created
-     child thread to share. Also allocates memory for it using malloc(). */
-  struct parent_child *child = (struct parent_child*) malloc(sizeof(struct parent_child));
-  child->thread_name = fn_copy;
-  child->exit_status = 0;
-
-  struct lock parent_block;
-  lock_init(&parent_block);
-  child->parent_block = &parent_block;
-
-  struct thread *parent;
-  parent = thread_current();
-  parent->parent_status = child;
-  // Block current thread here?
-  printf("before lock aquire\n");
-  //lock_acquire(child->parent_block);
-  /*if (lock_try_acquire(child->parent_block)) {
-    printf("lock successful\n");
-  }*/
-  lock_acquire(child->parent_block);
-  if (lock_held_by_current_thread(child->parent_block)) printf("lock successful\n");
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (fn_copy, PRI_DEFAULT, start_process, child);
-  printf("New thread ID: %d\n", tid);
-
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
     printf("TID_ERROR\n");
     palloc_free_page (fn_copy);
   }
-
-  if (!child->load_success)
-  {
-    printf("load fail\n");
-    tid = -1;
-  }
-  //else
-  //{
-    //printf("load success\n");
-  child->alive_count = 2;
-  lock_release(child->parent_block);
-  /* Add shared status between parent and child thread to parents child_status_list. */
-  list_push_back(&parent->child_status_list, &child->child_elem);
-  child->child_tid = tid;
-  printf("process_execute end\n");
   return tid;
-  //}
 }
 
 /* A thread function that loads a user process and starts it
@@ -92,9 +53,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in start_process\n");
-  struct parent_child *child; //= (struct parent_child*)child_thread; //Get given child thread
-  char *file_name = child->thread_name;
+  char *file_name = file_name_;
 
   struct intr_frame if_;
   bool success;
@@ -110,14 +69,7 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    printf("load failed\n");
-    child->load_success = false;
     thread_exit ();
-  }
-  /* Child thread was loaded successfully.*/
-  else {
-    printf("load successful\n");
-    child->load_success = true;
   }
 
   /* Start the user process by simulating a return from an
@@ -126,6 +78,7 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+
   /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
@@ -162,50 +115,19 @@ process_exit (void)
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
-  if (pd != NULL)
-  {
-    /* Correct ordering here is crucial.  We must set
-       cur->pagedir to NULL before switching page directories,
-       so that a timer interrupt can't switch back to the
-       process page directory.  We must activate the base page
-       directory before destroying the process's page
-       directory, or our active page directory will be one
-       that's been freed (and cleared). */
-    cur->pagedir = NULL;
-    pagedir_activate (NULL);
-    pagedir_destroy (pd);
-  }
-
-  /* Lab 3 */
-  struct thread *t = thread_current ();
-
-  if (!list_empty(&t->child_status_list)) {
-    printf("zd%\n", list_size(&t->child_status_list));
-  }
-  else printf("List is empty\n");
-
-  /* Check status with children. */
-  printf("Before while\n");
-  while (!list_empty(&t->child_status_list))
-  {
-    printf("Popping\n");
-    struct list_elem *elem = list_pop_front (&t->child_status_list);
-    printf("Temping\n");
-    struct parent_child *temp = list_entry (elem, struct parent_child, child_elem);
-    printf("Counter\n");
-    temp->alive_count -= 1;
-    /* Free the parent_child struct if both threads have exited. */
-    if (temp->alive_count == 0) free (temp);
-  }
-  /* Check status with parent. */
-  if (t->parent_status != NULL)
-  {
-    struct parent_child *temp = t->parent_status;
-    temp->alive_count -= 1;
-    /* Free the parent_child struct if both threads have exited. */
-    if (t->parent_status->alive_count == 0)
-      free (temp);
-  }
+  if (pd != NULL) 
+    {
+      /* Correct ordering here is crucial.  We must set
+         cur->pagedir to NULL before switching page directories,
+         so that a timer interrupt can't switch back to the
+         process page directory.  We must activate the base page
+         directory before destroying the process's page
+         directory, or our active page directory will be one
+         that's been freed (and cleared). */
+      cur->pagedir = NULL;
+      pagedir_activate (NULL);
+      pagedir_destroy (pd);
+    }
 }
 
 /* Sets up the CPU for running user code in the current
