@@ -52,7 +52,7 @@ process_execute (const char *file_name)
   struct thread *parent;
   parent = thread_current();
   parent->parent_status = child;
-  // Block current thread here?
+  // Block current thread here? Trying to branch this
   printf("before lock aquire\n");
   //lock_acquire(child->parent_block);
   /*if (lock_try_acquire(child->parent_block)) {
