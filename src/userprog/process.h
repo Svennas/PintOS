@@ -11,6 +11,7 @@ void process_exit (void);
 void process_activate (void);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 struct parent_child {
     int exit_status;
     int alive_count;
@@ -38,3 +39,6 @@ struct parent_child {
 
 #endif /* userprog/process.h */
 >>>>>>> 9b76f7d931fc2adbce2821f2ce898fbb19acc3cf
+=======
+#endif /* userprog/process.h */
+>>>>>>> parent of 6457f08... Lab 3: Restarted lab 3. Started writing the parent_child struct.
