@@ -1,22 +1,4 @@
 #include "userprog/process.h"
-#include <debug.h>
-#include <inttypes.h>
-#include <round.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "userprog/gdt.h"
-#include "userprog/pagedir.h"
-#include "userprog/tss.h"
-#include "filesys/directory.h"
-#include "filesys/file.h"
-#include "filesys/filesys.h"
-#include "threads/flags.h"
-#include "threads/init.h"
-#include "threads/interrupt.h"
-#include "threads/palloc.h"
-#include "threads/thread.h"
-#include "threads/vaddr.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -32,12 +14,24 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
+  struct parent_child* status;
+  struct thread* curr = thread_current();
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+
+  if (fn_copy == NULL) 
+  {
     return TID_ERROR;
+  }
+
   strlcpy (fn_copy, file_name, PGSIZE);
+
+  status->exit_status = 0;  // Set to -1 if the process crashes.
+  status->alive_count = 2;  // Initial value, both child and parent are alive
+  status->parent = curr;
+  list_push_back(curr->processes, status->child);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
@@ -53,6 +47,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {     /* <<<< This function has been changed for lab 3 >>>> */
+  printf("in start_process\n");
   char *file_name = file_name_;
 
   struct intr_frame if_;

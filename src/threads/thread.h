@@ -91,6 +91,9 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
+    // For lab 3 (test)
+    struct list processes;              /* List with all the parent_child structs. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
