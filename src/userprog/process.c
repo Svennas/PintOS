@@ -23,6 +23,8 @@ process_execute (const char *file_name)
 
   if (fn_copy == NULL) 
   {
+    status->exit_status = -1; // So we know that it failed
+    status->alive_count = 1;  // Parent is still alive
     return TID_ERROR;
   }
 
@@ -31,13 +33,24 @@ process_execute (const char *file_name)
   status->exit_status = 0;  // Set to -1 if the process crashes.
   status->alive_count = 2;  // Initial value, both child and parent are alive
   status->parent = curr;
-  list_push_back(curr->processes, status->child);
+  status->file_name = file_name;
+  // Add status to the list in the current thread (parent)
+  list_push_back(curr->processes, status->child); 
+
+  //struct semaphore* parent_block;
+  sema_init(status->parent_block, 0);   // Block parent here?
+  sema_down(status->parent_block);      // Blocks current_thread
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR) {
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
+
+  if (tid == TID_ERROR) {     // from: #define TID_ERROR ((tid_t) -1) 
     printf("TID_ERROR\n");
     palloc_free_page (fn_copy);
+
+    sema_up(status->parent_block);
+    status->exit_status = -1; // So we know that it failed
+    status->alive_count = 1;  // Parent is still alive
   }
   return tid;
 }
@@ -45,10 +58,12 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+//start_process (void *file_name_)
+start_process (struct parent_child* status)
 {     /* <<<< This function has been changed for lab 3 >>>> */
   printf("in start_process\n");
-  char *file_name = file_name_;
+  //char *file_name = file_name_;
+  char *file_name = status->file_name;
 
   struct intr_frame if_;
   bool success;
@@ -59,11 +74,16 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp); // <------ LOAD HERE
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
+
+  sema_up(status->parent_block);
+
   if (!success) {
+    status->exit_status = -1; // So we know that it failed
+    status->alive_count = 1;  // ????
     thread_exit ();
   }
 

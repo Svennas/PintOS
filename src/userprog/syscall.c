@@ -187,6 +187,23 @@ int write (int fd, const void *buffer, unsigned size)
 thread and destroy it. */
 void exit (int status)
 {
+  struct thread* curr = thread_current(); 
+
+  if (list_empty(curr->children)) 
+  {
+    thread_exit();
+    return;
+  }
+  struct list_elem* child;
+
+  for (child = list_begin (curr->children); child != list_end (curr->children);
+        child = list_next (child))
+    {
+      struct parent_child* status = list_entry (child, struct parent_child, elem);
+      
+      
+    }
+
   thread_exit();
 }
 

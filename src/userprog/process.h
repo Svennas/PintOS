@@ -25,11 +25,14 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
 
-struct parent_child {   // Under work
-    int exit_status;
-    int alive_count;
-    struct thread* parent;
-    struct list_elem child;        
+// Under work
+struct parent_child {   
+    int exit_status;            // If threads are ready to exit
+    int alive_count;            // Can be 0, 1, or 2, depending which threads are alive
+    struct thread* parent;      // To keep check of parent
+    struct list_elem child;     // To keep check of child
+    struct semaphore* parent_block;     // To block parent thread
+    char *file_name;    // Replacing argument file_name_ in start_process(); 
 };
 
 #endif /* userprog/process.h */

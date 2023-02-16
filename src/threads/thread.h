@@ -93,7 +93,7 @@ struct thread
     struct list_elem elem;              /* List element. */
     
     // For lab 3 (test)
-    struct list processes;              /* List with all the parent_child structs. */
+    struct list children;              /* List with all the children. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
