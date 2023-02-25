@@ -14,8 +14,9 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  struct parent_child* status;
+  struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
+  list_init(&curr->children);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -35,11 +36,17 @@ process_execute (const char *file_name)
   status->parent = curr;
   status->file_name = file_name;
   // Add status to the list in the current thread (parent)
-  list_push_back(curr->processes, status->child); 
+  list_push_front(&(curr->children), &(status->child)); 
 
-  //struct semaphore* parent_block;
-  sema_init(status->parent_block, 0);   // Block parent here?
-  sema_down(status->parent_block);      // Blocks current_thread
+  printf("Problem with list_push_back\n");
+
+  //struct semaphore* p = (struct semaphore*)malloc(sizeof(struct semaphore));
+  //status->parent_block = p;
+  //sema_init(&(status->block), 0);   // Block parent here?
+  lock_init(&(status->block));
+  printf("lock init\n");
+  //sema_down(&(status->block));      // Blocks current_thread
+  lock_acquire(&(status->block));
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
@@ -48,7 +55,8 @@ process_execute (const char *file_name)
     printf("TID_ERROR\n");
     palloc_free_page (fn_copy);
 
-    sema_up(status->parent_block);
+    //sema_up(&(status->block));
+    lock_release(&(status->block));
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
   }
@@ -59,33 +67,44 @@ process_execute (const char *file_name)
    running. */
 static void
 //start_process (void *file_name_)
-start_process (struct parent_child* status)
+start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
   printf("in start_process\n");
   //char *file_name = file_name_;
+
+  struct parent_child* status = aux;
+
   char *file_name = status->file_name;
 
   struct intr_frame if_;
   bool success;
 
   /* Initialize interrupt frame and load executable. */
-  /* --- load --- */
+  /* --- load (critical section?) --- */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+  printf("Before load\n");
   success = load (file_name, &if_.eip, &if_.esp); // <------ LOAD HERE
+
+  printf("%d\n", success);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
 
-  sema_up(status->parent_block);
+  
 
   if (!success) {
+    printf("no success\n");
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // ????
+    lock_release(&(status->block));
     thread_exit ();
   }
+
+  //sema_up(&(status->block));
+  lock_release(&(status->block));
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

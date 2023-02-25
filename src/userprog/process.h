@@ -18,7 +18,10 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
+
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
@@ -31,7 +34,8 @@ struct parent_child {
     int alive_count;            // Can be 0, 1, or 2, depending which threads are alive
     struct thread* parent;      // To keep check of parent
     struct list_elem child;     // To keep check of child
-    struct semaphore* parent_block;     // To block parent thread
+    //struct semaphore block;     // To block parent thread
+    struct lock block;
     char *file_name;    // Replacing argument file_name_ in start_process(); 
 };
 

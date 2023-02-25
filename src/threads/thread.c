@@ -182,11 +182,9 @@ thread_create (const char *name, int priority,
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
-  printf("1. start_process called here?\n");
   kf->function = function;
-  printf("2. start_process called here?\n");
   kf->aux = aux;
-  printf("3. start_process called here?\n");
+  printf("start_process called here?\n");
 
   /* Stack frame for switch_entry(). */
   ef = alloc_frame (t, sizeof *ef);
