@@ -196,15 +196,27 @@ void exit (int status)
     thread_exit();
     return;
   }
-  struct list_elem* e;
+  /*struct list_elem* e;
 
   for (e = list_begin (&curr->children); e != list_end (&curr->children);
         e = list_next (e))
-    {
-      struct parent_child* pc = list_entry (e, struct parent_child, child);
-      
-      
-    }
+  {
+    struct parent_child* pc = list_entry (e, struct parent_child, child);
+    
+    if (pc->alive_count == 1) thread_exit();
+    
+  }
+
+  struct list_elem* e = list_front(curr->children);
+  struct list_elem* temp = e;
+
+  while(!list_empty(curr->children))
+  {
+
+
+    temp = list_next(e);
+
+  }*/
 
   thread_exit();
 }
@@ -217,6 +229,7 @@ pid_t exec (const char *cmd_line)
 {
   printf("exec()\n");
   pid_t child_pid = process_execute (cmd_line);
+  printf("in exec, before return\n");
   
   return child_pid;
 }

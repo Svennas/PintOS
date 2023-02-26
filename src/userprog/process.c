@@ -18,6 +18,8 @@ process_execute (const char *file_name)
   struct thread* curr = thread_current();
   //list_init(&curr->children);
 
+  sema_init(&(status->block), 0);
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -40,32 +42,31 @@ process_execute (const char *file_name)
   // Add status to the list in the current thread (parent)
   list_push_front(&(curr->children), &(status->child)); 
 
-  //struct semaphore* p = (struct semaphore*)malloc(sizeof(struct semaphore));
-  //status->parent_block = p;
-  //sema_init(&(status->block), 0);   // Block parent here?
-  lock_init(&(status->block));
-  //sema_down(&(status->block));      // Blocks current_thread
-  lock_acquire(&(status->block));
+  printf("Sena: %d",status->block.value);
+  printf("\n");
+  printf("After sema down\n");
+  //lock_acquire(&(status->block));
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
-
+  printf("after thread_create\n");
+  sema_down(&(status->block)); 
   if (tid == TID_ERROR) {     // from: #define TID_ERROR ((tid_t) -1) 
     printf("TID_ERROR\n");
     palloc_free_page (fn_copy);
 
-    //sema_up(&(status->block));
-    lock_release(&(status->block));
+    sema_up(&(status->block));
+    //lock_release(&(status->block));
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
   }
+  printf("end of process_execute\n");
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-//start_process (void *file_name_)
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
   printf("in start_process\n");
@@ -92,18 +93,17 @@ start_process (void *aux)
 
   /* Free the allocated page for fn_copy */
   palloc_free_page (file_name);
-
-  
+  sema_up(&(status->block));
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // ????
-    lock_release(&(status->block));
+    //sema_up(&(status->block));
+    //lock_release(&(status->block));
     thread_exit ();
   }
-
-  
+  printf("before main_stack\n");
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -111,13 +111,18 @@ start_process (void *aux)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-
   /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  printf("after main_stack\n");
   NOT_REACHED ();
 
+  printf("after NOT_REACHED\n");
+  
   //sema_up(&(status->block));
-  lock_release(&(status->block));
+  printf("after sema_up\n");
+  //lock_release(&(status->block));
+  printf("Parent process ID: %d",status->parent->tid);
+  printf("\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
