@@ -187,6 +187,8 @@ int write (int fd, const void *buffer, unsigned size)
 thread and destroy it. */
 void exit (int status)
 {
+  printf("\n");
+  printf("exit()\n");
   struct thread* curr = thread_current(); 
 
   if (list_empty(&curr->children)) 
@@ -213,6 +215,7 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
+  printf("exec()\n");
   pid_t child_pid = process_execute (cmd_line);
   
   return child_pid;

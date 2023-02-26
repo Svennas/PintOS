@@ -16,7 +16,7 @@ process_execute (const char *file_name)
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
-  list_init(&curr->children);
+  //list_init(&curr->children);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -34,17 +34,16 @@ process_execute (const char *file_name)
   status->exit_status = 0;  // Set to -1 if the process crashes.
   status->alive_count = 2;  // Initial value, both child and parent are alive
   status->parent = curr;
-  status->file_name = file_name;
+  //status->file_name = file_name; //Not needed?
+  status->fn_copy = fn_copy;
+
   // Add status to the list in the current thread (parent)
   list_push_front(&(curr->children), &(status->child)); 
-
-  printf("Problem with list_push_back\n");
 
   //struct semaphore* p = (struct semaphore*)malloc(sizeof(struct semaphore));
   //status->parent_block = p;
   //sema_init(&(status->block), 0);   // Block parent here?
   lock_init(&(status->block));
-  printf("lock init\n");
   //sema_down(&(status->block));      // Blocks current_thread
   lock_acquire(&(status->block));
 
@@ -74,7 +73,7 @@ start_process (void *aux)
 
   struct parent_child* status = aux;
 
-  char *file_name = status->file_name;
+  char *file_name = status->fn_copy;
 
   struct intr_frame if_;
   bool success;
@@ -85,16 +84,17 @@ start_process (void *aux)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  printf("Before load\n");
-  success = load (file_name, &if_.eip, &if_.esp); // <------ LOAD HERE
 
-  printf("%d\n", success);
+  /*Loads the program by: 
+  - Allocating and activating page directory
+  - Setting up the stack.*/
+  success = load (file_name, &if_.eip, &if_.esp);
 
-  /* If load failed, quit. */
+  /* Free the allocated page for fn_copy */
   palloc_free_page (file_name);
 
   
-
+  /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
     status->exit_status = -1; // So we know that it failed
@@ -103,8 +103,7 @@ start_process (void *aux)
     thread_exit ();
   }
 
-  //sema_up(&(status->block));
-  lock_release(&(status->block));
+  
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -116,6 +115,9 @@ start_process (void *aux)
   /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
+
+  //sema_up(&(status->block));
+  lock_release(&(status->block));
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
