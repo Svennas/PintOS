@@ -16,9 +16,6 @@ process_execute (const char *file_name)
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
-  //list_init(&curr->children);
-
-  sema_init(&(status->block), 0);
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -33,24 +30,23 @@ process_execute (const char *file_name)
 
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  status->exit_status = 0;  // Set to -1 if the process crashes.
-  status->alive_count = 2;  // Initial value, both child and parent are alive
+  sema_init(&(status->block), 0);   // Initilize the semaphore
+  status->exit_status = 0;          // Set to -1 if the process crashes.
+  status->alive_count = 2;          // Initial value, both child and parent are alive
   status->parent = curr;
-  //status->file_name = file_name; //Not needed?
   status->fn_copy = fn_copy;
-
-  // Add status to the list in the current thread (parent)
+  /* Add status to the list in the current thread (parent) */
   list_push_front(&(curr->children), &(status->child)); 
-
-  printf("Sena: %d",status->block.value);
-  printf("\n");
-  printf("After sema down\n");
-  //lock_acquire(&(status->block));
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
   printf("after thread_create\n");
+
   sema_down(&(status->block)); 
+  printf("Sena: %d",status->block.value);
+  printf("\n");
+  printf("After sema down\n");
+
   if (tid == TID_ERROR) {     // from: #define TID_ERROR ((tid_t) -1) 
     printf("TID_ERROR\n");
     palloc_free_page (fn_copy);

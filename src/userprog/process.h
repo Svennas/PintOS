@@ -35,9 +35,7 @@ struct parent_child {
     struct thread* parent;      // To keep check of parent
     struct list_elem child;     // To keep check of child
     struct semaphore block;     // To block parent thread
-    //struct lock block;
-    // Not needed? char* file_name;    // Replacing argument file_name_ in start_process(); 
-    char* fn_copy;      // Needed for start_process to free the allocated page
+    char* fn_copy;              // Needed for start_process to free the allocated page
 };
 
 #endif /* userprog/process.h */

@@ -1,14 +1,5 @@
 #include "userprog/syscall.h"
-#include <stdio.h>
-#include <syscall-nr.h>
-#include "threads/interrupt.h"
-#include "threads/thread.h"
-#include "filesys/filesys.h"
-#include "filesys/file.h"
-#include "threads/init.h"
-#include "devices/input.h"
-#include "lib/kernel/console.h"
-#include "userprog/process.h"
+
 
 #define ARG_1 (f->esp+4)    /* First argument from stack (not counting syscall nr) */
 #define ARG_2 (f->esp+8)    /* Second argument from stack */
@@ -184,11 +175,16 @@ int write (int fd, const void *buffer, unsigned size)
 }
 
 /* Uses thread_exit() from threads/thread.h to deschedule the current
-thread and destroy it. */
+thread and destroy it. 
+
+1. remove all the children from the list
+2. let all the children finish executing
+3. free the all the shared 'struct parent_child':s
+4. go to thread_exit()
+*/
 void exit (int status)
 {
-  printf("\n");
-  printf("exit()\n");
+  printf("\n exit() \n");
   struct thread* curr = thread_current(); 
 
   if (list_empty(&curr->children)) 
@@ -196,17 +192,20 @@ void exit (int status)
     thread_exit();
     return;
   }
-  /*struct list_elem* e;
+
+  struct list_elem* e;
 
   for (e = list_begin (&curr->children); e != list_end (&curr->children);
-        e = list_next (e))
+        e = list_remove (e))
   {
-    struct parent_child* pc = list_entry (e, struct parent_child, child);
+    struct parent_child* status = list_entry (e, struct parent_child, child);
     
-    if (pc->alive_count == 1) thread_exit();
+    if (status->alive_count == 0) free(status);
+
+
     
   }
-
+  /*
   struct list_elem* e = list_front(curr->children);
   struct list_elem* temp = e;
 
