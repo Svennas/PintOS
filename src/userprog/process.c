@@ -26,6 +26,7 @@ process_execute (const char *file_name)
 
   if (fn_copy == NULL) 
   {
+    printf("fn_copy == NULL\n");
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
     return TID_ERROR;
@@ -154,6 +155,7 @@ process_exit (void)
   pd = cur->pagedir;
   if (pd != NULL) 
     {
+      printf("pd != NULL\n");
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -162,8 +164,11 @@ process_exit (void)
          directory, or our active page directory will be one
          that's been freed (and cleared). */
       cur->pagedir = NULL;
+      printf("1\n");
       pagedir_activate (NULL);
+      printf("2\n");
       pagedir_destroy (pd);
+      printf("3\n");
     }
 }
 

@@ -275,6 +275,7 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
+  printf("In thread_exit()\n");
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
@@ -284,9 +285,13 @@ thread_exit (void)
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
+  printf("After intr_disable\n");
   thread_current ()->status = THREAD_DYING;
+  printf("After status = THREAD_DYING\n");
   schedule ();
+  printf("After schedule ()\n");
   NOT_REACHED ();
+  printf("After NOT_REACHED ()\n");
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and

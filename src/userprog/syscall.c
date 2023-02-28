@@ -195,22 +195,30 @@ void exit (int status)
   has been created). */
   if (list_empty(&curr->children)) 
   { 
+    lock_acquire(&wait);
     /* Main thread with no children. */
-    if (curr->shared == NULL) thread_exit();
-
+    if (curr->shared == NULL) 
+    {
+      printf("Shared == NULL\n");
+      printf("Exiting thread ID: %d",curr->tid);
+      lock_release(&wait);
+      thread_exit();
+    }
     /* Child thread with no children. */
     else
     {
       //lock_acquire(&wait);
-      shared->alive_count--;
-      //lock_release(&wait);
+      printf("Child thread with no children. ID: %d",curr->tid);
+      printf("\n");
+      curr->shared->alive_count--;
+      lock_release(&wait);
     }
   }
 
   
   else 
   {
-    struct list_elem* e;
+    /*struct list_elem* e;
 
     for (e = list_begin (&curr->children); e != list_end (&curr->children);
           e = list_remove (e))
@@ -219,7 +227,34 @@ void exit (int status)
 
       status->alive_count--;    // Remove one for the parent.
 
+      lock_acquire(&wait);*/
+      
+      /* Should get stuck here until both parent and child are done (alive_count = 0). */
+      /*if (status->alive_count == 0) 
+      {
+        lock_release(&wait);
+        free(status);     // Free if both are dead
+      }
+    }*/
+
+    while (!list_empty (&curr->children))
+    {
+      printf("In while\n");
+
+      printf("Before lock\n");
       lock_acquire(&wait);
+      printf("After lock\n");
+      
+      struct list_elem *e = list_pop_front (&curr->children);
+      
+      struct parent_child* status = list_entry (e, struct parent_child, child);
+      printf("Parent ID: %d",status->parent->tid);
+      printf("\n");
+      printf("1. status->alive_count: %d",status->alive_count);
+      printf("\n");
+      status->alive_count--;    // Remove one for the parent.
+      printf("2. status->alive_count: %d",status->alive_count);
+      printf("\n");
       
       /* Should get stuck here until both parent and child are done (alive_count = 0). */
       if (status->alive_count == 0) 
@@ -228,13 +263,14 @@ void exit (int status)
         free(status);     // Free if both are dead
       }
     }
+    printf("Out of while\n");
   }
 
   /* Need to somehow wait for all the children to finish executing. */
   
 
   
-
+  printf("Before thread exit\n");
   thread_exit();
 }
 
@@ -244,7 +280,7 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
-  printf("exec()\n");
+  printf("\n exec() \n");
   pid_t child_pid = process_execute (cmd_line);
   printf("in exec, before return\n");
   
