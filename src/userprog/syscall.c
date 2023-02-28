@@ -199,23 +199,19 @@ void exit (int status)
         e = list_remove (e))
   {
     struct parent_child* status = list_entry (e, struct parent_child, child);
-    
-    if (status->alive_count == 0) free(status);
 
-
+    status->alive_count - 1;    // Remove one for the parent.
     
+    if (status->alive_count == 0) free(status);     // Free if both are dead
+  
   }
-  /*
-  struct list_elem* e = list_front(curr->children);
-  struct list_elem* temp = e;
 
-  while(!list_empty(curr->children))
-  {
+  /* Need to somehow wait for all the children to finish executing. */
+  struct lock wait;
+  lock_init(&wait);
+  lock_acquire(&wait);
 
-
-    temp = list_next(e);
-
-  }*/
+  
 
   thread_exit();
 }

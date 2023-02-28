@@ -14,6 +14,7 @@
 #include "devices/input.h"
 #include "lib/kernel/console.h"
 #include "userprog/process.h"
+#include "threads/synch.h"
 
 /* Lab 1 */
 void syscall_init (void);
