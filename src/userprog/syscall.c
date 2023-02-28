@@ -187,29 +187,51 @@ void exit (int status)
   printf("\n exit() \n");
   struct thread* curr = thread_current(); 
 
+  struct lock wait;
+  lock_init(&wait);
+  
+
+  /* Should be true if the thread is a child with no own children (or if no children
+  has been created). */
   if (list_empty(&curr->children)) 
-  {
-    thread_exit();
-    return;
+  { 
+    /* Main thread with no children. */
+    if (curr->shared == NULL) thread_exit();
+
+    /* Child thread with no children. */
+    else
+    {
+      //lock_acquire(&wait);
+      shared->alive_count--;
+      //lock_release(&wait);
+    }
   }
 
-  struct list_elem* e;
-
-  for (e = list_begin (&curr->children); e != list_end (&curr->children);
-        e = list_remove (e))
-  {
-    struct parent_child* status = list_entry (e, struct parent_child, child);
-
-    status->alive_count - 1;    // Remove one for the parent.
-    
-    if (status->alive_count == 0) free(status);     // Free if both are dead
   
+  else 
+  {
+    struct list_elem* e;
+
+    for (e = list_begin (&curr->children); e != list_end (&curr->children);
+          e = list_remove (e))
+    {
+      struct parent_child* status = list_entry (e, struct parent_child, child);
+
+      status->alive_count--;    // Remove one for the parent.
+
+      lock_acquire(&wait);
+      
+      /* Should get stuck here until both parent and child are done (alive_count = 0). */
+      if (status->alive_count == 0) 
+      {
+        lock_release(&wait);
+        free(status);     // Free if both are dead
+      }
+    }
   }
 
   /* Need to somehow wait for all the children to finish executing. */
-  struct lock wait;
-  lock_init(&wait);
-  lock_acquire(&wait);
+  
 
   
 

@@ -17,6 +17,9 @@ process_execute (const char *file_name)
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
 
+  printf("Curr ID: %d",thread_current()->tid);
+  printf("\n");
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -43,9 +46,6 @@ process_execute (const char *file_name)
   printf("after thread_create\n");
 
   sema_down(&(status->block)); 
-  printf("Sena: %d",status->block.value);
-  printf("\n");
-  printf("After sema down\n");
 
   if (tid == TID_ERROR) {     // from: #define TID_ERROR ((tid_t) -1) 
     printf("TID_ERROR\n");
@@ -68,6 +68,9 @@ start_process (void *aux)
   printf("in start_process\n");
   //char *file_name = file_name_;
 
+  //printf("Curr ID: %d",thread_current()->tid);
+  //printf("\n");
+
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
@@ -89,7 +92,9 @@ start_process (void *aux)
 
   /* Free the allocated page for fn_copy */
   palloc_free_page (file_name);
+
   sema_up(&(status->block));
+
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
@@ -101,6 +106,8 @@ start_process (void *aux)
   }
   printf("before main_stack\n");
 
+  thread_current()->shared = status;
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -109,16 +116,9 @@ start_process (void *aux)
      and jump to it. */
   /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  printf("after main_stack\n");
+  //printf("after main_stack\n");
   NOT_REACHED ();
-
-  printf("after NOT_REACHED\n");
-  
-  //sema_up(&(status->block));
-  printf("after sema_up\n");
-  //lock_release(&(status->block));
-  printf("Parent process ID: %d",status->parent->tid);
-  printf("\n");
+  printf("end of start_process\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If

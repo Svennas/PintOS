@@ -94,6 +94,8 @@ struct thread
     
     // For lab 3 (test)
     struct list children;              /* List with all the children. */
+    //bool haveChild;
+    struct parent_child* shared;       /* Should be null if it has no child. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

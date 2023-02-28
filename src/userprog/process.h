@@ -33,9 +33,10 @@ struct parent_child {
     int exit_status;            // If threads are ready to exit
     int alive_count;            // Can be 0, 1, or 2, depending which threads are alive
     struct thread* parent;      // To keep check of parent
-    struct list_elem child;     // To keep check of child
+    struct list_elem child;     
     struct semaphore block;     // To block parent thread
     char* fn_copy;              // Needed for start_process to free the allocated page
+    //struct thread* child;       // To keep check of child
 };
 
 #endif /* userprog/process.h */
