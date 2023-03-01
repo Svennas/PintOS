@@ -195,13 +195,13 @@ void exit (int status)
   has been created). */
   if (list_empty(&curr->children)) 
   { 
-    lock_acquire(&wait);
+    //lock_acquire(&wait);
     /* Main thread with no children. */
     if (curr->shared == NULL) 
     {
       printf("Shared == NULL\n");
       printf("Exiting thread ID: %d",curr->tid);
-      lock_release(&wait);
+      //lock_release(&wait);
       thread_exit();
     }
     /* Child thread with no children. */
@@ -211,7 +211,7 @@ void exit (int status)
       printf("Child thread with no children. ID: %d",curr->tid);
       printf("\n");
       curr->shared->alive_count--;
-      lock_release(&wait);
+      //lock_release(&wait);
     }
   }
 
@@ -255,7 +255,7 @@ void exit (int status)
       status->alive_count--;    // Remove one for the parent.
       printf("2. status->alive_count: %d",status->alive_count);
       printf("\n");
-      
+     
       /* Should get stuck here until both parent and child are done (alive_count = 0). */
       if (status->alive_count == 0) 
       {
