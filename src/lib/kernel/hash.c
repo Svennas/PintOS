@@ -336,7 +336,7 @@ turn_off_least_1bit (size_t x)
 static inline size_t
 is_power_of_2 (size_t x) 
 {
-  return x != 0 && turn_off_least_1bit (x) == 0;
+  return x != 0 && f_least_1bit (x) == 0;
 }
 
 /* Element per bucket ratios. */

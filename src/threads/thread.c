@@ -275,9 +275,14 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
+
   printf("In thread_exit()\n");
   ASSERT (!intr_context ());
 
+  //struct thread *next = next_thread_to_run ();
+  //printf("Next ID: %d \n",next->tid);
+
+  /* Does all threads need to come here at the same time? */
 #ifdef USERPROG
   process_exit ();
 #endif
@@ -287,7 +292,7 @@ thread_exit (void)
   intr_disable ();
   printf("After intr_disable\n");
   thread_current ()->status = THREAD_DYING;
-  printf("After status = THREAD_DYING\n");
+  // Kernel panic if there is a printf() here
   schedule ();
   printf("After schedule ()\n");
   NOT_REACHED ();

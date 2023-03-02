@@ -187,6 +187,9 @@ void exit (int status)
   printf("\n exit() \n");
   struct thread* curr = thread_current(); 
 
+  struct thread *next = next_thread_to_run ();
+  printf("NExt ID: %d",next->tid);
+
   struct lock wait;
   lock_init(&wait);
   
@@ -241,13 +244,16 @@ void exit (int status)
     {
       printf("In while\n");
 
-      printf("Before lock\n");
-      lock_acquire(&wait);
-      printf("After lock\n");
+      
       
       struct list_elem *e = list_pop_front (&curr->children);
       
       struct parent_child* status = list_entry (e, struct parent_child, child);
+
+      printf("Before lock\n");
+      lock_acquire(&wait);
+      printf("After lock\n");
+
       printf("Parent ID: %d",status->parent->tid);
       printf("\n");
       printf("1. status->alive_count: %d",status->alive_count);
@@ -267,8 +273,6 @@ void exit (int status)
   }
 
   /* Need to somehow wait for all the children to finish executing. */
-  
-
   
   printf("Before thread exit\n");
   thread_exit();
