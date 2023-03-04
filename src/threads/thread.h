@@ -96,9 +96,9 @@ struct thread
     struct list_elem elem;              /* List element. */
     
     // For lab 3 (test)
-    struct list children;              /* List with all the children. */
-    //bool haveChild;
-    struct parent_child* shared;       /* Should be null if it has no child. */
+    struct list children;              /* List with all the structs shared with children.*/
+    struct parent_child* parent_info;  /* Pointer to struct shared with parent.*/
+    struct semaphore* wait;            /* To wait until child is done.*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

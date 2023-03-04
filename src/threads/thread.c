@@ -282,10 +282,69 @@ thread_exit (void)
   //struct thread *next = next_thread_to_run ();
   //printf("Next ID: %d \n",next->tid);
 
+  sema_down(&wait_for_last);
+
   /* Does all threads need to come here at the same time? */
 #ifdef USERPROG
+  struct thread* curr = thread_current(); 
+
+  /* Should be true if the thread is a child with no own children (or if no children
+  has been created). */
+  if (list_empty(&curr->children)) 
+  { 
+    /* Main thread with no children. */
+    if (curr->shared == NULL) 
+    {
+      printf("Shared == NULL\n");
+      printf("Exiting thread ID: %d",curr->tid);
+      thread_exit();
+    }
+    /* Child thread with no children. */
+    else
+    {
+      printf("Child thread with no children. ID: %d",curr->tid);
+      printf("\n");
+      curr->shared->alive_count--;
+    }
+  }
+  else 
+  {
+
+    while (!list_empty (&curr->children))
+    {
+      printf("In while\n");
+      
+      struct list_elem *e = list_pop_front (&curr->children);
+      
+      struct parent_child* status = list_entry (e, struct parent_child, child);
+
+      printf("Before lock\n");
+      lock_acquire(&wait);
+      printf("After lock\n");
+
+      printf("Parent ID: %d",status->parent->tid);
+      printf("\n");
+      printf("1. status->alive_count: %d",status->alive_count);
+      printf("\n");
+      status->alive_count--;    // Remove one for the parent.
+      printf("2. status->alive_count: %d",status->alive_count);
+      printf("\n");
+     
+      /* Should get stuck here until both parent and child are done (alive_count = 0). */
+      if (status->alive_count == 0) 
+      {
+        lock_release(&wait);
+        free(status);     // Free if both are dead
+      }
+    }
+    printf("Out of while\n");
+  }
+
+
   process_exit ();
 #endif
+
+  sema_up(&wait_for_last);
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */

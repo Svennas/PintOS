@@ -34,28 +34,49 @@ process_execute (const char *file_name)
 
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  sema_init(&(status->block), 0);   // Initilize the semaphore
-  status->exit_status = 0;          // Set to -1 if the process crashes.
-  status->alive_count = 2;          // Initial value, both child and parent are alive
-  status->parent = curr;
+  sema_init(&(status->block), 0);   // Init sema for waiting while creating new process
+  sema_init(&(curr->wait), 0);      // Init sema for waiting for child in exit
+  //status->exit_status = 0;          // Set to -1 if the process crashes.
+  //status->alive_count = 2;          // Initial value, both child and parent are alive
+  //status->parent = curr;
   status->fn_copy = fn_copy;
   /* Add status to the list in the current thread (parent) */
-  list_push_front(&(curr->children), &(status->child)); 
+  //list_push_front(&(curr->children), &(status->child)); 
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
   printf("after thread_create\n");
 
   sema_down(&(status->block)); 
+  printf("after sema_down in process_execute() \n");
 
-  if (tid == TID_ERROR) {     // from: #define TID_ERROR ((tid_t) -1) 
-    printf("TID_ERROR\n");
+  curr->child_info = status;
+
+  /* Couldn't allocate thread. from: #define TID_ERROR ((tid_t) -1) */  
+  if (tid == TID_ERROR) 
+  {     
+    printf("TID_ERROR!\n");
     palloc_free_page (fn_copy);
 
-    sema_up(&(status->block));
-    //lock_release(&(status->block));
-    status->exit_status = -1; // So we know that it failed
-    status->alive_count = 1;  // Parent is still alive
+    //status->exit_status = -1; // So we know that it failed
+    //status->alive_count = 1;  // Parent is still alive
+    free(status); // No need for status if the new thread failed
+    return tid;
+  }
+  /* Couldn't load the program in start_process. */
+  if (!status->load_success)
+  {
+    printf("Load failure!\n");
+    //status->exit_status = -1; // So we know that it failed
+    //status->alive_count = 1;  // Parent is still alive
+    free(status); // No need for status if the new thread failed
+    return -1;
+  }
+  else
+  { // Only added if everything was successful
+    /* Add status to the list in the current thread (parent) */
+    list_push_front(&(curr->children), &(status->child)); 
+
   }
   printf("end of process_execute\n");
   return tid;
@@ -69,8 +90,8 @@ start_process (void *aux)
   printf("in start_process\n");
   //char *file_name = file_name_;
 
-  //printf("Curr ID: %d",thread_current()->tid);
-  //printf("\n");
+  printf("Curr ID: %d",thread_current()->tid);
+  printf("\n");
 
   struct parent_child* status = aux;
 
@@ -94,20 +115,30 @@ start_process (void *aux)
   /* Free the allocated page for fn_copy */
   palloc_free_page (file_name);
 
+  if (success)
+  {
+    printf("Curr ID: %d",thread_current()->tid);
+    printf("\n");
+    status->exit_status = 0;    // Initial value 
+    status->alive_count = 2;    // Initial value, both child and parent are alive
+    status->child = thread_current();
+    thread_current()->parent_info = status;
+  }
   sema_up(&(status->block));
+  status->load_success = success;
 
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
-    status->exit_status = -1; // So we know that it failed
-    status->alive_count = 1;  // ????
+    //status->exit_status = -1; // So we know that it failed
+    //status->alive_count = 1;  // ????
     //sema_up(&(status->block));
     //lock_release(&(status->block));
     thread_exit ();
   }
   printf("before main_stack\n");
 
-  thread_current()->shared = status;
+  //thread_current()->shared = status;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
