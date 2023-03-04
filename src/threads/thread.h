@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -98,7 +99,8 @@ struct thread
     // For lab 3 (test)
     struct list children;              /* List with all the structs shared with children.*/
     struct parent_child* parent_info;  /* Pointer to struct shared with parent.*/
-    struct semaphore* wait;            /* To wait until child is done.*/
+    //struct semaphore* wait;            /* To wait until child is done.*/
+    struct lock wait;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

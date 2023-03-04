@@ -35,7 +35,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   sema_init(&(status->block), 0);   // Init sema for waiting while creating new process
-  sema_init(&(curr->wait), 0);      // Init sema for waiting for child in exit
+  lock_init(&(curr->wait));      // Init sema for waiting for child in exit
   //status->exit_status = 0;          // Set to -1 if the process crashes.
   //status->alive_count = 2;          // Initial value, both child and parent are alive
   //status->parent = curr;
@@ -50,7 +50,7 @@ process_execute (const char *file_name)
   sema_down(&(status->block)); 
   printf("after sema_down in process_execute() \n");
 
-  curr->child_info = status;
+  //curr->child_info = status;
 
   /* Couldn't allocate thread. from: #define TID_ERROR ((tid_t) -1) */  
   if (tid == TID_ERROR) 
@@ -121,7 +121,7 @@ start_process (void *aux)
     printf("\n");
     status->exit_status = 0;    // Initial value 
     status->alive_count = 2;    // Initial value, both child and parent are alive
-    status->child = thread_current();
+    //status->child = thread_current();
     thread_current()->parent_info = status;
   }
   sema_up(&(status->block));

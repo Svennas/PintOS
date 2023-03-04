@@ -36,7 +36,7 @@ struct parent_child {
     struct list_elem child;     
     struct semaphore block;     // To block parent thread
     char* fn_copy;              // Needed for start_process to free the allocated page
-    struct thread* child;       // To keep check of child
+    //struct thread* child;       // To keep check of child
     bool load_success;          // If load in start_process fails or not
 };
 
