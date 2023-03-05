@@ -34,6 +34,7 @@ process_execute (const char *file_name)
   
   status->fn_copy = fn_copy;
   status->parent = curr;
+
   /* Add status to the list in the current thread (parent) */
   list_push_front(&(curr->children), &(status->child)); 
 
@@ -107,7 +108,6 @@ start_process (void *aux)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
