@@ -30,14 +30,11 @@ void process_activate (void);
 
 // Under work
 struct parent_child {   
-    int exit_status;            // If threads are ready to exit
-    int alive_count;            // Can be 0, 1, or 2, depending which threads are alive
-    struct thread* parent;      // To keep check of parent
-    struct list_elem child;     
-    struct semaphore block;     // To block parent thread
-    char* fn_copy;              // Needed for start_process to free the allocated page
-    //struct thread* child;       // To keep check of child
-    bool load_success;          // If load in start_process fails or not
+    int exit_status;         // -1 if the process crashes for any reason, otherwise 0
+    int alive_count;         // Can be 0, 1, or 2, depending on how many threads are alive
+    struct thread* parent;   // To be able to reach the parent's semaphore
+    struct list_elem child;  // Used by parent thread in the children list
+    char* fn_copy;           // Needed for start_process to free the allocated page
 };
 
 #endif /* userprog/process.h */

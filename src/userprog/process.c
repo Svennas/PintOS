@@ -10,18 +10,13 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
-  //printf("in process_execute hej\n");
   char *fn_copy;
   tid_t tid;
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
 
-  //printf("Curr ID: %d",thread_current()->tid);
-  //printf("\n");
-
   sema_init(&(curr->wait), 0);   // Init sema for waiting while creating new process
-  //lock_init(&(curr->wait));      // Init sema for waiting for child in exit
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -36,28 +31,19 @@ process_execute (const char *file_name)
   }
 
   strlcpy (fn_copy, file_name, PGSIZE);
-
-  
-  //status->exit_status = 0;          // Set to -1 if the process crashes.
-  //status->alive_count = 2;          // Initial value, both child and parent are alive
   
   status->fn_copy = fn_copy;
+  status->parent = curr;
   /* Add status to the list in the current thread (parent) */
   list_push_front(&(curr->children), &(status->child)); 
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
-  //printf("after thread_create\n");
 
-  status->parent = curr;
-  //printf("before down sema value %d\n",curr->wait.value);
+  /* Make current thread wait while child start executing. */
   sema_down(&(curr->wait)); 
-  //printf("after sema_down in process_execute() \n");
-  //printf("after down sema value %d\n",curr->wait.value);
 
-  //curr->child_info = status;
-
-  /* Couldn't allocate thread. from: #define TID_ERROR ((tid_t) -1) */  
+  /* Couldn't allocate thread. */  
   if (tid == TID_ERROR) 
   {     
     printf("TID_ERROR!\n");
@@ -65,29 +51,11 @@ process_execute (const char *file_name)
 
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
-    //sema_up(&(status->block));
-    sema_up(&(status->parent->wait));
-    //free(status); // No need for status if the new thread failed
-    //return tid;
-  }
-  /* Couldn't load the program in start_process. */
-  /*if (!status->load_success)
-  {
-    printf("Load failure!\n");
-    
-    //status->exit_status = -1; // So we know that it failed
-    //status->alive_count = 1;  // Parent is still alive
-    free(status); // No need for status if the new thread failed
-    return -1;
-  }
-  else
-  { // Only added if everything was successful
-    /* Add status to the list in the current thread (parent) */
-    /*printf("Trying to push_front\n");
-    //list_push_front(&(curr->children), &(status->child)); 
 
-  }*/
-  //printf("end of process_execute\n");
+    /* Child thread is finished, let parent continue executing. */
+    sema_up(&(status->parent->wait));
+  }
+
   return tid;
 }
 
@@ -96,15 +64,8 @@ process_execute (const char *file_name)
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  //printf("in start_process\n");
-  //char *file_name = file_name_;
-
-  //printf("Curr ID: %d",thread_current()->tid);
-  //printf("\n");
 
   struct parent_child* status = aux;
-
-  //printf("check sema in start %d\n",status->parent->wait.value);
 
   char *file_name = status->fn_copy;
 
@@ -112,48 +73,33 @@ start_process (void *aux)
   bool success;
 
   /* Initialize interrupt frame and load executable. */
-  /* --- load (critical section?) --- */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  /*Loads the program by: 
-  - Allocating and activating page directory
-  - Setting up the stack.*/
+  /* Loads the program by: 
+       - Allocating and activating page directory
+       - Setting up the stack.*/
   success = load (file_name, &if_.eip, &if_.esp);
 
-  /* Free the allocated page for fn_copy */
+  /* Free the allocated page for fn_copy. */
   palloc_free_page (file_name);
-  //printf("before sema value %d\n",status->block.value);
-  sema_up(&(status->parent->wait));
-  //printf("after sema value %d\n",status->parent->wait.value);
-  //printf("sema_up in start\n");
 
-  if (success)
-  {
-    //printf("Curr ID: %d",thread_current()->tid);
-    //printf("\n");
-    status->exit_status = 0;    // Initial value 
-    status->alive_count = 2;    // Initial value, both child and parent are alive
-    //status->child = thread_current();
-    thread_current()->parent_info = status;
-  }
-  
-  //status->load_success = success;
+  /* Not in critical section anymore. Let parent continue executing. */
+  sema_up(&(status->parent->wait));
+
+  status->exit_status = 0;    // Initial value 
+  status->alive_count = 2;    // Initial value, both child and parent are alive
+  thread_current()->parent_info = status;
 
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
     status->exit_status = -1; // So we know that it failed
-    status->alive_count = 1;  // ????
-    //sema_up(&(status->block));
-    //lock_release(&(status->block));
+    status->alive_count = 1;  // Parent is still alive
     thread_exit ();
   }
-  //printf("before main_stack\n");
-
-  //thread_current()->shared = status;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -163,7 +109,6 @@ start_process (void *aux)
      and jump to it. */
   /* --- setup_main_stack --- */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  //printf("after main_stack\n");
   NOT_REACHED ();
 }
 
@@ -189,9 +134,7 @@ process_wait (tid_t child_tid UNUSED)
 /* Free the current process's resources. */
 void
 process_exit (void)
-{     /* <<<< This function has been changed for lab 3 >>>> */
-  //printf("In process_exit()\n");
-
+{ 
   struct thread *cur = thread_current ();
   uint32_t *pd;
 

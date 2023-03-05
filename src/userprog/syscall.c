@@ -15,7 +15,6 @@ static void syscall_handler (struct intr_frame *f);
 void
 syscall_init (void)
 {
-  //printf("syscall_init\n");
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -24,60 +23,60 @@ syscall_handler (struct intr_frame *f)
 {
   int syscall_nr = *((int*)f->esp);
 
-  if (syscall_nr == SYS_HALT) {
-    //printf("SYS_HALT\n");
+  if (syscall_nr == SYS_HALT) 
+  {
     halt();
   }
 
-  else if (syscall_nr == SYS_CREATE) {
-    //printf("SYS_CREATE\n");
+  else if (syscall_nr == SYS_CREATE) 
+  {
     char *create_arg_1 = *((char**)ARG_1);
     unsigned create_arg_2 = *((unsigned*)ARG_2);
     f->eax = create (create_arg_1, create_arg_2);
   }
 
-  else if (syscall_nr == SYS_OPEN) {
-    //printf("SYS_OPEN\n");
+  else if (syscall_nr == SYS_OPEN) 
+  {
     char *open_arg = *((char**)ARG_1);
     f->eax = open (open_arg);
   }
 
-  else if (syscall_nr == SYS_CLOSE) {
-    //printf("SYS_CLOSE\n");
+  else if (syscall_nr == SYS_CLOSE) 
+  {
     int close_arg = *((int*)ARG_1);
     close (close_arg);
   }
 
-  else if (syscall_nr == SYS_READ) {
-    //printf("SYS_READ\n");
+  else if (syscall_nr == SYS_READ) 
+  {
     int read_arg_1 = *((int*)ARG_1);
     void *read_arg_2 = *((void**)ARG_2);
     unsigned read_arg_3 = *((unsigned*)ARG_3);
     f->eax = read (read_arg_1, read_arg_2, read_arg_3);
   }
 
-  else if (syscall_nr == SYS_WRITE) {
-    //printf("SYS_WRITE\n");
+  else if (syscall_nr == SYS_WRITE) 
+  {
     int write_arg_1 = *((int*)ARG_1);
     void *write_arg_2 = *((void**)ARG_2);
     unsigned write_arg_3 = *((unsigned*)ARG_3);
     f->eax = write (write_arg_1, write_arg_2, write_arg_3);
   }
 
-  else if (syscall_nr == SYS_EXIT) {
-    //printf("SYS_EXIT\n");
+  else if (syscall_nr == SYS_EXIT) 
+  {
     int exit_arg = *((int*)ARG_1);
     exit (exit_arg);
   }
 
   else if (syscall_nr == SYS_EXEC)
   {
-    //printf("SYS_EXEC\n");
     char *exec_arg = *((char**)ARG_1);
     f->eax = exec (exec_arg);
   }
 
-  else {
+  else 
+  {
     printf ("Not a valid system call!\n");
   }
 }
@@ -129,9 +128,6 @@ If fd is 0, reads from console using input_getc() from devices/input.h.
 Returns -1 if the file is NULL. Returns the files size if successful.*/
 int read (int fd, void *buffer, unsigned size)
 {
-  /*if (fd < FD_START || fd > FD_END) {
-    return -1;
-  }*/
 
   struct thread *t = thread_current ();
   struct file *f = t->fd_list[fd];
@@ -174,13 +170,8 @@ int write (int fd, const void *buffer, unsigned size)
   }
 }
 
-/* Uses thread_exit() from threads/thread.h to deschedule the current
-thread and destroy it. 
-
-1. remove all the children from the list
-2. let all the children finish executing
-3. free the all the shared 'struct parent_child':s
-4. go to thread_exit()
+/* Closes all the files related to the thread, the uses thread_exit() from 
+threads/thread.h to deschedule the current thread and destroy it. 
 */
 void exit (int status)
 {
@@ -197,7 +188,5 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
-  pid_t child_pid = process_execute (cmd_line);
-  
-  return child_pid;
+  return process_execute (cmd_line);;
 }

@@ -2,11 +2,20 @@
 #define THREADS_THREAD_H
 
 #include <debug.h>
+#include <stddef.h>
+#include <random.h>
 #include <list.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "threads/flags.h"
+#include "threads/interrupt.h"
+#include "threads/intr-stubs.h"
+#include "threads/palloc.h"
+#include "threads/switch.h"
+#include "threads/synch.h"
+#include "threads/vaddr.h"
 #include "threads/synch.h"
 
 /* States in a thread's life cycle. */
@@ -96,11 +105,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     
-    // For lab 3 (test)
+    /* Added for lab 3. */ 
     struct list children;              /* List with all the structs shared with children.*/
     struct parent_child* parent_info;  /* Pointer to struct shared with parent.*/
-    struct semaphore wait;            /* To wait until child is done.*/
-    //struct lock wait;
+    struct semaphore wait;             /* To wait until child is done with setup.*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

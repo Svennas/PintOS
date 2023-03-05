@@ -1,16 +1,5 @@
 #include "threads/thread.h"
-#include <debug.h>
-#include <stddef.h>
-#include <random.h>
-#include <stdio.h>
-#include <string.h>
-#include "threads/flags.h"
-#include "threads/interrupt.h"
-#include "threads/intr-stubs.h"
-#include "threads/palloc.h"
-#include "threads/switch.h"
-#include "threads/synch.h"
-#include "threads/vaddr.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -275,76 +264,40 @@ thread_tid (void)
 void
 thread_exit (void) 
 {
-
-  //printf("In thread_exit()\n");
   ASSERT (!intr_context ());
 
-  //struct thread *next = next_thread_to_run ();
-  //printf("Next ID: %d \n",next->tid);
-
-  //sema_down(&wait_for_last);
-
-  /* Does all threads need to come here at the same time? */
 #ifdef USERPROG
 
   struct thread* curr = thread_current(); 
 
-  /* Should be true if the thread is a child with no own children (or if no children
-  has been created). */
+  /* Thread with no children. */
   if (list_empty(&curr->children)) 
   { 
-    /* Main thread with no parent. */
-    if (curr->parent_info == NULL) 
-    {
-      //printf("Shared == NULL\n");
-      //printf("Exiting thread ID: %d",curr->tid);
-      //process_exit();
-    }
-    /* Child thread with no children. */
-    else
-    {
-      //printf("Child thread with no children. ID: %d",curr->tid);
-      //printf("\n");
-      curr->parent_info->alive_count--;
+    curr->parent_info->alive_count--;
 
-      //printf("sema value %d\n",curr->parent_info->block.value);
-
-      if (curr->parent_info->alive_count == 0)
-      {
-        free(curr->parent_info);
-        //process_exit();
-      }
-      
+    if (curr->parent_info->alive_count == 0)
+    {
+      free(curr->parent_info);
     }
   }
   else 
   {
-
     while (!list_empty (&curr->children))
     {
-      //printf("In while\n");
-      
       struct list_elem *e = list_pop_front (&curr->children);
       
       struct parent_child* status = list_entry (e, struct parent_child, child);
 
-      //printf("1. status->alive_count: %d",status->alive_count);
-      //printf("\n");
       status->alive_count--;    // Remove one for the parent.
-      //printf("2. status->alive_count: %d",status->alive_count);
-      //printf("\n");
+
       if (status->alive_count == 0) 
       {
-        //lock_release(&curr->wait);
         free(status);     // Free if both are dead
       }
     }
-    //printf("Out of while\n");
   }
-
   process_exit ();
 #endif
-
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
