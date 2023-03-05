@@ -184,8 +184,10 @@ thread and destroy it.
 */
 void exit (int status)
 {
-  printf("\n exit() \n");
-  printf("Before thread exit\n");
+  for (int i = FD_START; i < FD_END; i++)
+  {
+    close(i);
+  }
   thread_exit();
 }
 
@@ -195,9 +197,7 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
-  printf("\n exec() \n");
   pid_t child_pid = process_execute (cmd_line);
-  printf("in exec, before return\n");
   
   return child_pid;
 }

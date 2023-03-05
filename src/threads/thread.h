@@ -99,8 +99,8 @@ struct thread
     // For lab 3 (test)
     struct list children;              /* List with all the structs shared with children.*/
     struct parent_child* parent_info;  /* Pointer to struct shared with parent.*/
-    //struct semaphore* wait;            /* To wait until child is done.*/
-    struct lock wait;
+    struct semaphore wait;            /* To wait until child is done.*/
+    //struct lock wait;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

@@ -10,15 +10,18 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in process_execute hej\n");
+  //printf("in process_execute hej\n");
   char *fn_copy;
   tid_t tid;
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
 
-  printf("Curr ID: %d",thread_current()->tid);
-  printf("\n");
+  //printf("Curr ID: %d",thread_current()->tid);
+  //printf("\n");
+
+  sema_init(&(curr->wait), 0);   // Init sema for waiting while creating new process
+  //lock_init(&(curr->wait));      // Init sema for waiting for child in exit
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -34,21 +37,23 @@ process_execute (const char *file_name)
 
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  sema_init(&(status->block), 0);   // Init sema for waiting while creating new process
-  lock_init(&(curr->wait));      // Init sema for waiting for child in exit
+  
   //status->exit_status = 0;          // Set to -1 if the process crashes.
   //status->alive_count = 2;          // Initial value, both child and parent are alive
-  //status->parent = curr;
+  
   status->fn_copy = fn_copy;
   /* Add status to the list in the current thread (parent) */
-  //list_push_front(&(curr->children), &(status->child)); 
+  list_push_front(&(curr->children), &(status->child)); 
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
-  printf("after thread_create\n");
+  //printf("after thread_create\n");
 
-  sema_down(&(status->block)); 
-  printf("after sema_down in process_execute() \n");
+  status->parent = curr;
+  //printf("before down sema value %d\n",curr->wait.value);
+  sema_down(&(curr->wait)); 
+  //printf("after sema_down in process_execute() \n");
+  //printf("after down sema value %d\n",curr->wait.value);
 
   //curr->child_info = status;
 
@@ -58,15 +63,18 @@ process_execute (const char *file_name)
     printf("TID_ERROR!\n");
     palloc_free_page (fn_copy);
 
-    //status->exit_status = -1; // So we know that it failed
-    //status->alive_count = 1;  // Parent is still alive
-    free(status); // No need for status if the new thread failed
-    return tid;
+    status->exit_status = -1; // So we know that it failed
+    status->alive_count = 1;  // Parent is still alive
+    //sema_up(&(status->block));
+    sema_up(&(status->parent->wait));
+    //free(status); // No need for status if the new thread failed
+    //return tid;
   }
   /* Couldn't load the program in start_process. */
-  if (!status->load_success)
+  /*if (!status->load_success)
   {
     printf("Load failure!\n");
+    
     //status->exit_status = -1; // So we know that it failed
     //status->alive_count = 1;  // Parent is still alive
     free(status); // No need for status if the new thread failed
@@ -75,10 +83,11 @@ process_execute (const char *file_name)
   else
   { // Only added if everything was successful
     /* Add status to the list in the current thread (parent) */
-    list_push_front(&(curr->children), &(status->child)); 
+    /*printf("Trying to push_front\n");
+    //list_push_front(&(curr->children), &(status->child)); 
 
-  }
-  printf("end of process_execute\n");
+  }*/
+  //printf("end of process_execute\n");
   return tid;
 }
 
@@ -87,13 +96,15 @@ process_execute (const char *file_name)
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in start_process\n");
+  //printf("in start_process\n");
   //char *file_name = file_name_;
 
-  printf("Curr ID: %d",thread_current()->tid);
-  printf("\n");
+  //printf("Curr ID: %d",thread_current()->tid);
+  //printf("\n");
 
   struct parent_child* status = aux;
+
+  //printf("check sema in start %d\n",status->parent->wait.value);
 
   char *file_name = status->fn_copy;
 
@@ -114,29 +125,33 @@ start_process (void *aux)
 
   /* Free the allocated page for fn_copy */
   palloc_free_page (file_name);
+  //printf("before sema value %d\n",status->block.value);
+  sema_up(&(status->parent->wait));
+  //printf("after sema value %d\n",status->parent->wait.value);
+  //printf("sema_up in start\n");
 
   if (success)
   {
-    printf("Curr ID: %d",thread_current()->tid);
-    printf("\n");
+    //printf("Curr ID: %d",thread_current()->tid);
+    //printf("\n");
     status->exit_status = 0;    // Initial value 
     status->alive_count = 2;    // Initial value, both child and parent are alive
     //status->child = thread_current();
     thread_current()->parent_info = status;
   }
-  sema_up(&(status->block));
-  status->load_success = success;
+  
+  //status->load_success = success;
 
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
-    //status->exit_status = -1; // So we know that it failed
-    //status->alive_count = 1;  // ????
+    status->exit_status = -1; // So we know that it failed
+    status->alive_count = 1;  // ????
     //sema_up(&(status->block));
     //lock_release(&(status->block));
     thread_exit ();
   }
-  printf("before main_stack\n");
+  //printf("before main_stack\n");
 
   //thread_current()->shared = status;
 
@@ -150,7 +165,6 @@ start_process (void *aux)
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   //printf("after main_stack\n");
   NOT_REACHED ();
-  printf("end of start_process\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -176,7 +190,7 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (void)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  printf("In process_exit()\n");
+  //printf("In process_exit()\n");
 
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -186,7 +200,6 @@ process_exit (void)
   pd = cur->pagedir;
   if (pd != NULL) 
     {
-      printf("pd != NULL\n");
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -195,11 +208,8 @@ process_exit (void)
          directory, or our active page directory will be one
          that's been freed (and cleared). */
       cur->pagedir = NULL;
-      printf("1\n");
       pagedir_activate (NULL);
-      printf("2\n");
       pagedir_destroy (pd);
-      printf("3\n");
     }
 }
 

@@ -60,6 +60,7 @@ sema_init (struct semaphore *sema, unsigned value)
 void
 sema_down (struct semaphore *sema) 
 {
+  //printf("In sema_down\n");
   enum intr_level old_level;
 
   ASSERT (sema != NULL);
@@ -108,6 +109,7 @@ sema_try_down (struct semaphore *sema)
 void
 sema_up (struct semaphore *sema) 
 {
+  //printf("In sema_up\n");
   enum intr_level old_level;
 
   ASSERT (sema != NULL);
