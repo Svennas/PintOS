@@ -270,10 +270,17 @@ thread_exit (void)
 
   struct thread* curr = thread_current(); 
 
+  struct lock block;
+  lock_init(&block);
+
   /* Thread with no children. */
   if (list_empty(&curr->children)) 
   { 
+    lock_acquire(&block);
+
     curr->parent_info->alive_count--;
+
+    lock_release(&block);
 
     if (curr->parent_info->alive_count == 0)
     {
@@ -288,7 +295,11 @@ thread_exit (void)
       
       struct parent_child* status = list_entry (e, struct parent_child, child);
 
+      lock_acquire(&block);
+
       status->alive_count--;    // Remove one for the parent.
+
+      lock_release(&block);
 
       if (status->alive_count == 0) 
       {

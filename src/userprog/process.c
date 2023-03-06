@@ -87,13 +87,9 @@ start_process (void *aux)
   /* Free the allocated page for fn_copy. */
   palloc_free_page (file_name);
 
-  /* Not in critical section anymore. Let parent continue executing. */
-  sema_up(&(status->parent->wait));
-
   status->exit_status = 0;    // Initial value 
   status->alive_count = 2;    // Initial value, both child and parent are alive
-  thread_current()->parent_info = status;
-
+  
   /* If load failed, quit. */
   if (!success) {
     printf("no success\n");
@@ -101,6 +97,11 @@ start_process (void *aux)
     status->alive_count = 1;  // Parent is still alive
     thread_exit ();
   }
+  
+  /* Not in critical section anymore. Let parent continue executing. */
+  sema_up(&(status->parent->wait));
+
+  thread_current()->parent_info = status;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

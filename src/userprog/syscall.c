@@ -188,5 +188,5 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 {
-  return process_execute (cmd_line);;
+  return process_execute (cmd_line);
 }
