@@ -8,10 +8,55 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (char *argv[]) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
   char *fn_copy;
   tid_t tid;
+
+  const char* file_name;
+
+  char *arg1, *arg2;
+
+  //char s[] = "  String to  tokenize. ";
+  //char s[] = argv;
+  char *token, *save_ptr;
+
+  for (token = strtok_r (&argv, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr))
+  {
+    printf ("'%s'\n", token);
+    
+  }
+
+
+
+  /*char *str1, *str2, *token, *subtoken;
+  char *saveptr1, *saveptr2;
+  int j;*/
+
+  /*if (argc != 4) 
+  {
+    fprintf(stderr, "Usage: %s string delim subdelim\n", argv[0]);
+    return -1;
+  }*/
+
+  /*for (j = 1, str1 = argv[1]; ; j++, str1 = NULL) 
+  {
+    token = strtok_r(str1, argv[2], &saveptr1);
+
+    if (token == NULL)
+      break;
+    printf("%d: %s\n", j, token);
+
+    for (str2 = token; ; str2 = NULL) 
+    {
+      subtoken = strtok_r(str2, argv[3], &saveptr2);
+
+      if (subtoken == NULL)
+          break;
+      printf(" --> %s\n", subtoken);
+    }
+  }*/
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
@@ -497,7 +542,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t page_offset
       if (file_read (file, kpage + page_offset, page_read_bytes - page_offset) != (int) (page_read_bytes - page_offset))
       {
         if (new_kpage)
-		palloc_free_page (kpage);
+		palloc_free_page (kpage);argument passing
         return false;
 
       }
@@ -535,7 +580,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }

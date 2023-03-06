@@ -15,6 +15,7 @@
 #include "lib/kernel/console.h"
 #include "userprog/process.h"
 #include "threads/synch.h"
+#include "lib/string.h"
 
 /* Lab 1 */
 void syscall_init (void);
@@ -30,6 +31,9 @@ int write (int fd, const void *buffer, unsigned size);
 /* Lab 3 (Started again 2023)*/
 void exit (int status);
 pid_t exec (const char *cmd_line);
+
+/* Lab 4 */
+#define MAX_SIZE_ARG 32*4;
 
 
 #endif /* userprog/syscall.h */
