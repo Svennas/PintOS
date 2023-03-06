@@ -8,55 +8,22 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (char *argv[]) 
+process_execute (const char *file_name) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
+  printf("in process_execute\n");
+
   char *fn_copy;
   tid_t tid;
 
-  const char* file_name;
+  //printf("&file_name[0] = %p\n", file_name[0]);
+  printf("file_name[0] = %c\n", file_name[0]);
 
-  char *arg1, *arg2;
+  /*char s[] = "  String to  tokenize. ";
+   char *token, *save_ptr;
 
-  //char s[] = "  String to  tokenize. ";
-  //char s[] = argv;
-  char *token, *save_ptr;
-
-  for (token = strtok_r (&argv, " ", &save_ptr); token != NULL;
+   for (token = strtok_r (s, " ", &save_ptr); token != NULL;
         token = strtok_r (NULL, " ", &save_ptr))
-  {
-    printf ("'%s'\n", token);
-    
-  }
-
-
-
-  /*char *str1, *str2, *token, *subtoken;
-  char *saveptr1, *saveptr2;
-  int j;*/
-
-  /*if (argc != 4) 
-  {
-    fprintf(stderr, "Usage: %s string delim subdelim\n", argv[0]);
-    return -1;
-  }*/
-
-  /*for (j = 1, str1 = argv[1]; ; j++, str1 = NULL) 
-  {
-    token = strtok_r(str1, argv[2], &saveptr1);
-
-    if (token == NULL)
-      break;
-    printf("%d: %s\n", j, token);
-
-    for (str2 = token; ; str2 = NULL) 
-    {
-      subtoken = strtok_r(str2, argv[3], &saveptr2);
-
-      if (subtoken == NULL)
-          break;
-      printf(" --> %s\n", subtoken);
-    }
-  }*/
+     printf ("'%s'\n", token);*/
 
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
@@ -110,13 +77,15 @@ process_execute (char *argv[])
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-
+  printf("in start_process\n");
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
 
   struct intr_frame if_;
   bool success;
+
+  //int args = status->nr_args;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -128,6 +97,7 @@ start_process (void *aux)
        - Allocating and activating page directory
        - Setting up the stack.*/
   success = load (file_name, &if_.eip, &if_.esp);
+  //success = load (file_name, &if_.eip, &if_.esp, args);
 
   /* Free the allocated page for fn_copy. */
   palloc_free_page (file_name);
@@ -293,7 +263,9 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t
    Returns true if successful, false otherwise. */
 bool
 load (const char *file_name, void (**eip) (void), void **esp) 
+//load (const char *file_name, void (**eip) (void), void **esp, int args) 
 {
+  printf("in load\n");
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -307,15 +279,17 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  printf("before setup_stack\n");
   /* Set up stack. */
   if (!setup_stack (esp)){
     goto done;
   }
+  printf("after setup_stack\n");
 
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-/*#define STACK_DEBUG*/
+#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);
@@ -542,7 +516,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t page_offset
       if (file_read (file, kpage + page_offset, page_read_bytes - page_offset) != (int) (page_read_bytes - page_offset))
       {
         if (new_kpage)
-		palloc_free_page (kpage);argument passing
+		palloc_free_page (kpage);
         return false;
 
       }
@@ -572,6 +546,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t page_offset
 static bool
 setup_stack (void **esp) 
 {
+  printf("in setup_stack\n");
+
   uint8_t *kpage;
   bool success = false;
 
