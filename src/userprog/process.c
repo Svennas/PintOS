@@ -8,15 +8,17 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+//process_execute (const char *file_name) 
+process_execute (const char *cmd_line) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
   printf("in process_execute\n");
+  printf("Current thread ID: %d\n",thread_current()->tid);
 
   char *fn_copy;
   tid_t tid;
 
   //printf("&file_name[0] = %p\n", file_name[0]);
-  printf("file_name[0] = %c\n", file_name[0]);
+  printf("file_name[0] = %c\n", cmd_line[0]);
 
   /*char s[] = "  String to  tokenize. ";
    char *token, *save_ptr;
@@ -30,8 +32,7 @@ process_execute (const char *file_name)
 
   sema_init(&(curr->wait), 0);   // Init sema for waiting while creating new process
 
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
+  /* Allocate page for fn_copy, which here is empty. */
   fn_copy = palloc_get_page (0);
 
   if (fn_copy == NULL) 
@@ -42,7 +43,16 @@ process_execute (const char *file_name)
     return TID_ERROR;
   }
 
-  strlcpy (fn_copy, file_name, PGSIZE);
+  printf("fn_copy before: %s\n", fn_copy);
+  printf("cmd_line: %s\n", cmd_line);
+
+  printf("Before strlcpy\n");
+  //strlcpy (fn_copy, file_name, PGSIZE);
+
+  /* Make a copy of cmd_line.
+     Otherwise there's a race between the caller and load(). */
+  strlcpy (fn_copy, cmd_line, PGSIZE);
+  printf("fn_copy after: %s\n", fn_copy);
   
   status->fn_copy = fn_copy;
   status->parent = curr;
@@ -51,7 +61,8 @@ process_execute (const char *file_name)
   list_push_front(&(curr->children), &(status->child)); 
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
+  //tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
+  tid = thread_create (cmd_line, PRI_DEFAULT, start_process, status);
 
   /* Make current thread wait while child start executing. */
   sema_down(&(curr->wait)); 
@@ -251,7 +262,12 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+//static bool setup_stack (void **esp);
+// For lab 4
+//static bool setup_stack (void **esp, char* args_to_stack[]);
+static bool setup_stack (void **esp, int argc, char* argv[]);
+
+
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t uoffset,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -262,8 +278,9 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+//load (const char *file_name, void (**eip) (void), void **esp) 
 //load (const char *file_name, void (**eip) (void), void **esp, int args) 
+load (const char *cmd_line, void (**eip) (void), void **esp) 
 {
   printf("in load\n");
   struct thread *t = thread_current ();
@@ -273,6 +290,26 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  printf("cmd_line before = %s\n", cmd_line);
+
+  char *token, *save_ptr;
+
+  char* argv[MAX_NR_ARGS];
+  int argc = 0;
+
+  for (token = strtok_r (cmd_line, " ", &save_ptr); token != NULL;
+      token = strtok_r (NULL, " ", &save_ptr))
+  {
+    argv[argc] = token;
+    printf("argv = %s\n", argv[argc]);
+    argc++;
+  }
+
+  /* Get file_name */
+  char* file_name;
+  file_name = argv[0];  
+  printf("file_name = %s\n", file_name);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -281,7 +318,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   printf("before setup_stack\n");
   /* Set up stack. */
-  if (!setup_stack (esp)){
+  if (!setup_stack (esp, argc, argv)){
     goto done;
   }
   printf("after setup_stack\n");
@@ -298,7 +335,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* It prints every byte as if it was a char and every 32-bit aligned
      data as if it was a pointer. */
   void * ptr_save = PHYS_BASE;
-  i=-15;
+  i=-15;  // 16/4 = 4, 4 frames
   while(ptr_save - i >= *esp) {
     char *whats_there = (char *)(ptr_save - i);
     // show the address ...
@@ -544,19 +581,87 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t page_offset
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+//setup_stack (void **esp)
+//setup_stack (void **esp, char* args_to_stack[]) 
+setup_stack (void **esp, int argc, char* argv[])
 {
   printf("in setup_stack\n");
+  printf("arg 0 = %s\n", argv[0]);
+  printf("arg 1 = %s\n", argv[1]);
+  printf("arg 2 = %s\n", argv[2]);
+  printf("arg 3 = %s\n", argv[3]);
+  //printf("arg 4 = %s\n", argv[4]);
+  printf("argc = %d\n", argc);
+
+  char* arg0 = argv[0];
+  char* arg1 = argv[1];
+  char* arg2 = argv[2];
+  char* arg3 = argv[3];
 
   uint8_t *kpage;
   bool success = false;
 
+  uint8_t *new_page;
+
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
+      // PHYS_BASE indicates the bottom of the stack, at the end of user space
+
+      /* Base address of the 1:1 physical-to-virtual mapping.  Physical
+   memory is mapped starting at this virtual address.  Thus,
+   physical address 0 is accessible at PHYS_BASE, physical
+   address address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234, and
+   so on.
+
+   This address also marks the end of user programs' address
+   space.  Up to this point in memory, user programs are allowed
+   to map whatever they like.  At this point and above, the
+   virtual address space belongs to the kernel. */
+
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+      {
+        bool try = false;
+        for (int i = 0; i < argc; i++)
+        {
+          printf("In for loop\n");
+          new_page = palloc_get_page(PAL_USER);
+          try = install_page(((uint8_t *) PHYS_BASE) - (PGSIZE*i), new_page, true);
+          if (try)
+          {
+            *esp = ((uint8_t *) PHYS_BASE) - (PGSIZE*i);
+            argv[i] = (char *)*esp; 
+          }
+        }
+        //void* ptr_to_arg = (uint32_t *)arg0;
+
+        // -12 so there is room on the stack?
+        // start at -4 for the first arg?
+        //*esp = (uint8_t *) PHYS_BASE + 4;  // Start
+
+        // Dereference twice to write to write
+        //*esp = &ptr_to_arg; 
+
+        //*esp = PHYS_BASE - (argc * 32); // Start adress
+
+        // Dereference twice to write to write
+        //*esp = ptr_to_arg; 
+
+        //*esp = PHYS_BASE + (uint8_t *)argv;
+
+        //*esp = (uint8_t *) PHYS_BASE + ptr_to_arg; 
+
+        //*esp = PHYS_BASE ;
+
+        //esp = &arg1;
+
+        //arg0 = (char *)*esp; 
+
+        //esp* = 
+
+
+      }
       else
         palloc_free_page (kpage);
     }

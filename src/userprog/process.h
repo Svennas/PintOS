@@ -22,13 +22,15 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 
+/* Added in lab 4 */
+#define MAX_NR_ARGS 38   /* Maximum number of arguments allowed to pass to setup_stack*/
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
 
-// Under work
+/* Added in lab 3 */
 struct parent_child {   
     int exit_status;         // -1 if the process crashes for any reason, otherwise 0
     int alive_count;         // Can be 0, 1, or 2, depending on how many threads are alive
