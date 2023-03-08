@@ -301,9 +301,10 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
       token = strtok_r (NULL, " ", &save_ptr))
   {
     argv[argc] = token;
-    printf("argv = %s\n", argv[argc]);
+    //printf("argv = %s\n", argv[argc]);
     argc++;
   }
+  argv[argc] = NULL;    // Last elem is NULL
 
   /* Get file_name */
   char* file_name;
@@ -585,19 +586,6 @@ static bool
 //setup_stack (void **esp, char* args_to_stack[]) 
 setup_stack (void **esp, int argc, char* argv[])
 {
-  printf("in setup_stack\n");
-  printf("arg 0 = %s\n", argv[0]);
-  printf("arg 1 = %s\n", argv[1]);
-  printf("arg 2 = %s\n", argv[2]);
-  printf("arg 3 = %s\n", argv[3]);
-  //printf("arg 4 = %s\n", argv[4]);
-  printf("argc = %d\n", argc);
-
-  char* arg0 = argv[0];
-  char* arg1 = argv[1];
-  char* arg2 = argv[2];
-  char* arg3 = argv[3];
-
   uint8_t *kpage;
   bool success = false;
 
@@ -608,58 +596,39 @@ setup_stack (void **esp, int argc, char* argv[])
     {
       // PHYS_BASE indicates the bottom of the stack, at the end of user space
 
-      /* Base address of the 1:1 physical-to-virtual mapping.  Physical
-   memory is mapped starting at this virtual address.  Thus,
-   physical address 0 is accessible at PHYS_BASE, physical
-   address address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234, and
-   so on.
-
-   This address also marks the end of user programs' address
-   space.  Up to this point in memory, user programs are allowed
-   to map whatever they like.  At this point and above, the
-   virtual address space belongs to the kernel. */
-
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
       {
-        bool try = false;
-        for (int i = 0; i < argc; i++)
+
+        /* 
+          1. Get total size of of all the arguments for the stack
+          2. Get the starting adress for the stack pointer
+          3. Push all the arguments to the stack
+          4. (?) push the address of each string plus a null pointer sentinel
+          ?. Add word alignment
+
+        */
+
+        /* Get the size of all the arguments. */
+        int arg_size = 0;
+        for (int i = 0; i > argc; i++)
         {
-          printf("In for loop\n");
-          new_page = palloc_get_page(PAL_USER);
-          try = install_page(((uint8_t *) PHYS_BASE) - (PGSIZE*i), new_page, true);
-          if (try)
-          {
-            *esp = ((uint8_t *) PHYS_BASE) - (PGSIZE*i);
-            argv[i] = (char *)*esp; 
-          }
+          arg_size += strlen(argv[i]); 
+          printf("arg_size = %i\n", arg_size);
         }
-        //void* ptr_to_arg = (uint32_t *)arg0;
 
-        // -12 so there is room on the stack?
-        // start at -4 for the first arg?
-        //*esp = (uint8_t *) PHYS_BASE + 4;  // Start
+        /*Word-aligned accesses are faster than unaligned accesses, so for best performance
+         round the stack pointer down to a multiple of 4 before the first push. */
 
-        // Dereference twice to write to write
-        //*esp = &ptr_to_arg; 
+        // argv[] is an array of pointers
+        char* curr_arg;       // Pointer to current argument (word)
+        *esp = PHYS_BASE;     // Start at PHYS_BASE
 
-        //*esp = PHYS_BASE - (argc * 32); // Start adress
 
-        // Dereference twice to write to write
-        //*esp = ptr_to_arg; 
-
-        //*esp = PHYS_BASE + (uint8_t *)argv;
-
-        //*esp = (uint8_t *) PHYS_BASE + ptr_to_arg; 
-
-        //*esp = PHYS_BASE ;
-
-        //esp = &arg1;
-
-        //arg0 = (char *)*esp; 
-
-        //esp* = 
-
+        printf("*esp is %p\n", esp);
+        printf("*PHYS_BASE %p\n", PHYS_BASE);
+        printf("*curr_arg  = %c\n", *curr_arg);
+        printf("curr_arg = %s\n", argv[i]);
 
       }
       else
