@@ -18,7 +18,7 @@ process_execute (const char *cmd_line)
   tid_t tid;
 
   //printf("&file_name[0] = %p\n", file_name[0]);
-  printf("file_name[0] = %c\n", cmd_line[0]);
+  //printf("file_name[0] = %c\n", cmd_line[0]);
 
   /*char s[] = "  String to  tokenize. ";
    char *token, *save_ptr;
@@ -43,16 +43,16 @@ process_execute (const char *cmd_line)
     return TID_ERROR;
   }
 
-  printf("fn_copy before: %s\n", fn_copy);
-  printf("cmd_line: %s\n", cmd_line);
+  //printf("fn_copy before: %s\n", fn_copy);
+  //printf("cmd_line: %s\n", cmd_line);
 
-  printf("Before strlcpy\n");
+  //printf("Before strlcpy\n");
   //strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Make a copy of cmd_line.
      Otherwise there's a race between the caller and load(). */
   strlcpy (fn_copy, cmd_line, PGSIZE);
-  printf("fn_copy after: %s\n", fn_copy);
+  //printf("fn_copy after: %s\n", fn_copy);
   
   status->fn_copy = fn_copy;
   status->parent = curr;
@@ -290,7 +290,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  printf("cmd_line before = %s\n", cmd_line);
+  //printf("cmd_line before = %s\n", cmd_line);
 
   char *token, *save_ptr;
 
@@ -309,7 +309,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   /* Get file_name */
   char* file_name;
   file_name = argv[0];  
-  printf("file_name = %s\n", file_name);
+  //printf("file_name = %s\n", file_name);
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -589,47 +589,90 @@ setup_stack (void **esp, int argc, char* argv[])
   uint8_t *kpage;
   bool success = false;
 
-  uint8_t *new_page;
-
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      // PHYS_BASE indicates the bottom of the stack, at the end of user space
-
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
       {
-
         /* 
           1. Get total size of of all the arguments for the stack
           2. Get the starting adress for the stack pointer
           3. Push all the arguments to the stack
           4. (?) push the address of each string plus a null pointer sentinel
           ?. Add word alignment
-
         */
 
         /* Get the size of all the arguments. */
-        int arg_size = 0;
-        for (int i = 0; i > argc; i++)
+        uint32_t arg_size = 0;
+        for (int i = 0; i < argc; i++)
         {
-          arg_size += strlen(argv[i]); 
-          printf("arg_size = %i\n", arg_size);
+          arg_size += strlen(argv[i]) + 1; 
         }
+        printf("all arg_size = %i\n", arg_size);
 
-        /*Word-aligned accesses are faster than unaligned accesses, so for best performance
-         round the stack pointer down to a multiple of 4 before the first push. */
+        /* Round the stack pointer down to a multiple of 4 before the first push*/
+        arg_size = (arg_size % 4) + 4;
+        esp = PHYS_BASE - arg_size;   
+        printf("esp is %p\n", esp);
 
-        // argv[] is an array of pointers
-        char* curr_arg;       // Pointer to current argument (word)
-        *esp = PHYS_BASE;     // Start at PHYS_BASE
+        uint32_t size = 0;
+        /* Push arguments to stack in reverse order */
+        printf("-----Push arguments to stack in reverse order-----\n");
+        for (int i = argc-1; i >= 0; i--)
+        {
+          //printf("curr_arg = %s\n", argv[i]);
+          size = strlen(argv[i]);
+          printf("size = %i\n", size);
+          esp -= size;     // Point to new address
+          //printf("esp pointing at: %p\n", esp);
+          memcpy((char*)esp, argv[i], size); 
+          //(char*)(*esp) = argv[i];
+          printf("esp at %p = %s\n", esp, (char*)esp);
+        }
+        //physical address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234
 
+        /* Align the stack pointer to a multiple of 4 bytes */
+        esp -= (uint32_t)esp % 4;   // Word align
 
-        printf("*esp is %p\n", esp);
-        printf("*PHYS_BASE %p\n", PHYS_BASE);
-        printf("*curr_arg  = %c\n", *curr_arg);
-        printf("curr_arg = %s\n", argv[i]);
+        /* Push a null pointer sentinel to the stack.
+        The null pointer sentinel ensures that argv[argc] is a null pointer. */
+        printf("-----Push a null pointer sentinel to the stack-----\n");
+        uint32_t sentinel = 0;
+        size = sizeof(uint32_t);
+        printf("size = %i\n", size);
+        esp -= size;
+        printf("esp at %p = %s\n", esp, (char*)esp);
+        memcpy(esp, &sentinel, size);
+        printf("esp at %p = %s\n", esp, (char*)esp);
 
+        /* Push argv (the address of argv[0]) */
+        printf("-----Push argv (the address of argv[0])-----\n");
+        size = argc * 4;
+        printf("size = %i\n", size);
+        esp -= size;     // Point to new address
+        *esp = argv;
+        printf("esp at %p = %p\n", esp, *esp);
+
+        /* Push argc */
+        printf("-----Push argc-----\n");
+        size = argc;
+        printf("size = %i\n", size);
+        esp -= size;     // Point to new address
+        memcpy(*esp, &argc, size);
+        printf("esp at %p = %i\n", esp, (int)*esp);
+
+        /* Push a fake "return address" */
+        printf("-----Push a fake 'return address'-----\n");
+        uint32_t fake = 0;
+        esp -= (sizeof(uint32_t)) + 1;
+        printf("esp = %p\n", esp);
+        memcpy((char*)esp, &fake, sizeof(uint32_t));
+
+        /* Align the stack pointer to a multiple of 4 bytes */
+        printf("-----Align the stack pointer to a multiple of 4 bytes-----\n");
+        esp -= (uint32_t)esp % 4;
+        printf("esp = %p\n", esp);
       }
       else
         palloc_free_page (kpage);
