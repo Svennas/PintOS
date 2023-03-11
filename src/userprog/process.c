@@ -615,6 +615,12 @@ setup_stack (void **esp, int argc, char* argv[])
         arg_size = (arg_size % 4) + 4;
         esp = PHYS_BASE - arg_size;   
         printf("esp is %p\n", esp);
+        //-------test---------
+        //char test[4] = "test"; 
+        esp = esp - (uint8_t )4;
+        printf("esp is %p\n", esp);
+
+        void* ptr;
 
         uint32_t size = 0;
         /* Push arguments to stack in reverse order */
@@ -625,10 +631,16 @@ setup_stack (void **esp, int argc, char* argv[])
           size = strlen(argv[i]);
           printf("size = %i\n", size);
           esp -= size;     // Point to new address
-          //printf("esp pointing at: %p\n", esp);
+          printf("esp pointing at: %p\n", esp);
           memcpy((char*)esp, argv[i], size); 
           //(char*)(*esp) = argv[i];
           printf("esp at %p = %s\n", esp, (char*)esp);
+          if (i == 0) 
+          {
+            ptr = esp;
+            printf("ptr = %p\n", ptr);
+            printf("esp at %p = %s\n", esp, (char*)esp);
+          }
         }
         //physical address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234
 
@@ -651,15 +663,17 @@ setup_stack (void **esp, int argc, char* argv[])
         size = argc * 4;
         printf("size = %i\n", size);
         esp -= size;     // Point to new address
-        *esp = argv;
+        *esp = ptr;
         printf("esp at %p = %p\n", esp, *esp);
+        //printf("(argv[3])esp at %p = %p\n", esp - 12, *(esp-12));
 
         /* Push argc */
         printf("-----Push argc-----\n");
         size = argc;
         printf("size = %i\n", size);
         esp -= size;     // Point to new address
-        memcpy(*esp, &argc, size);
+        //memcpy((int*)esp, argc, size);
+        *esp = (void*)argc;
         printf("esp at %p = %i\n", esp, (int)*esp);
 
         /* Push a fake "return address" */
