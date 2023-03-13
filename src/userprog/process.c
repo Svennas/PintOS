@@ -617,24 +617,43 @@ setup_stack (void **esp, int argc, char* argv[])
         printf("esp is %p\n", esp);
         //-------test---------
         //char test[4] = "test"; 
-        esp = esp - (uint8_t )4;
+        //esp = esp - (uint8_t )4;
+        //esp -= sizeof(char);
         printf("esp is %p\n", esp);
 
         void* ptr;
 
         uint32_t size = 0;
+
+        char* curr_arg;
+        char curr_char;
+
+
         /* Push arguments to stack in reverse order */
         printf("-----Push arguments to stack in reverse order-----\n");
         for (int i = argc-1; i >= 0; i--)
-        {
+        {   // Loop for every word
           //printf("curr_arg = %s\n", argv[i]);
-          size = strlen(argv[i]);
+          curr_arg = argv[i];
+          curr_char = *(curr_arg - 1);
+          printf("curr_char = %c\n", curr_char);
+
+          while(curr_char != '\0')
+          {
+            printf("curr_char = %c\n", curr_char);
+            *((char*)esp) = curr_char;
+            curr_char--;
+          }
+          esp--;
+          printf("esp at %p = %s\n", esp, (char*)esp);
+
+          /*size = strlen(argv[i]);
           printf("size = %i\n", size);
           esp -= size;     // Point to new address
           printf("esp pointing at: %p\n", esp);
-          memcpy((char*)esp, argv[i], size); 
+          memcpy(esp, &(argv[i]), size); 
           //(char*)(*esp) = argv[i];
-          printf("esp at %p = %s\n", esp, (char*)esp);
+          printf("esp at %p = %s\n", esp, (char*)esp);*/
           if (i == 0) 
           {
             ptr = esp;
