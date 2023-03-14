@@ -278,8 +278,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-//load (const char *file_name, void (**eip) (void), void **esp) 
-//load (const char *file_name, void (**eip) (void), void **esp, int args) 
 load (const char *cmd_line, void (**eip) (void), void **esp) 
 {
   printf("in load\n");
@@ -327,7 +325,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-#define STACK_DEBUG
+//#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);
@@ -595,14 +593,6 @@ setup_stack (void **esp, int argc, char* argv[])
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
       {
-        /* 
-          1. Get total size of of all the arguments for the stack
-          2. Get the starting adress for the stack pointer
-          3. Push all the arguments to the stack
-          4. (?) push the address of each string plus a null pointer sentinel
-          ?. Add word alignment
-        */
-
         /* Get the size of all the arguments. */
         uint32_t arg_size = 0;
         for (int i = 0; i < argc; i++)
@@ -613,53 +603,50 @@ setup_stack (void **esp, int argc, char* argv[])
 
         /* Round the stack pointer down to a multiple of 4 before the first push*/
         arg_size = (arg_size % 4) + 4;
-        esp = PHYS_BASE - arg_size;   
-        printf("esp is %p\n", esp);
-        //-------test---------
-        //char test[4] = "test"; 
-        //esp = esp - (uint8_t )4;
-        //esp -= sizeof(char);
-        printf("esp is %p\n", esp);
-
-        void* ptr;
+        *esp = PHYS_BASE - arg_size;  // Start address 
+        printf("*esp is %p\n", *esp);
+        *esp = *esp - sizeof(char);
+        //void* ptr = *esp;     // Copy the stack pointer
+        printf("*esp is %p\n", *esp);
 
         uint32_t size = 0;
 
+        char* arg_ptrs[argc];   // To save pointers to arguments
         char* curr_arg;
-        char curr_char;
-
-
+        char* stop;
+        char temp;
         /* Push arguments to stack in reverse order */
         printf("-----Push arguments to stack in reverse order-----\n");
         for (int i = argc-1; i >= 0; i--)
         {   // Loop for every word
-          //printf("curr_arg = %s\n", argv[i]);
+
+
           curr_arg = argv[i];
-          curr_char = *(curr_arg - 1);
-          printf("curr_char = %c\n", curr_char);
+          size = strlen(argv[i]);   // Size of current argument
+          //curr_arg += size - 1;     // Get to the last relevant address in the argument
 
-          while(curr_char != '\0')
-          {
-            printf("curr_char = %c\n", curr_char);
-            *((char*)esp) = curr_char;
-            curr_char--;
-          }
-          esp--;
-          printf("esp at %p = %s\n", esp, (char*)esp);
+          *esp -= size - 1;
+          *(char*)esp = curr_arg;
 
-          /*size = strlen(argv[i]);
-          printf("size = %i\n", size);
-          esp -= size;     // Point to new address
-          printf("esp pointing at: %p\n", esp);
-          memcpy(esp, &(argv[i]), size); 
-          //(char*)(*esp) = argv[i];
-          printf("esp at %p = %s\n", esp, (char*)esp);*/
-          if (i == 0) 
+
+          //memcpy(*((char*)esp), curr_arg, size-1);
+          printf("*esp at %p = %c\n", *esp, (char*)esp);
+
+          /*for (; *curr_arg != '\0'; curr_arg--)
           {
-            ptr = esp;
-            printf("ptr = %p\n", ptr);
-            printf("esp at %p = %s\n", esp, (char*)esp);
-          }
+            printf("CHAR = %c\n", *curr_arg);
+            temp = *curr_arg;
+            //printf("*esp is %p\n", *esp);
+
+            //memcpy(&(*((char*)esp)), &temp, 1);
+            *((char*)esp) = *curr_arg;
+            printf("*esp at %p = %c\n", *esp, *((char*)esp));
+            (*esp)--;  // Move address one step up the stack
+            //printf("*esp is %p\n", *esp);
+          }*/
+
+          arg_ptrs[i] = *esp;
+
         }
         //physical address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234
 
@@ -682,8 +669,8 @@ setup_stack (void **esp, int argc, char* argv[])
         size = argc * 4;
         printf("size = %i\n", size);
         esp -= size;     // Point to new address
-        *esp = ptr;
-        printf("esp at %p = %p\n", esp, *esp);
+        //*ptr = ptr;
+        //printf("ptr at %p = %p\n", ptr, ptr);
         //printf("(argv[3])esp at %p = %p\n", esp - 12, *(esp-12));
 
         /* Push argc */
@@ -692,8 +679,8 @@ setup_stack (void **esp, int argc, char* argv[])
         printf("size = %i\n", size);
         esp -= size;     // Point to new address
         //memcpy((int*)esp, argc, size);
-        *esp = (void*)argc;
-        printf("esp at %p = %i\n", esp, (int)*esp);
+        //*ptr = (void*)argc;
+        //printf("ptr at %p = %i\n", ptr, (int)*ptr);
 
         /* Push a fake "return address" */
         printf("-----Push a fake 'return address'-----\n");
@@ -706,7 +693,13 @@ setup_stack (void **esp, int argc, char* argv[])
         printf("-----Align the stack pointer to a multiple of 4 bytes-----\n");
         esp -= (uint32_t)esp % 4;
         printf("esp = %p\n", esp);
+
+
+        //*esp = (void*)ptr;
       }
+
+      
+
       else
         palloc_free_page (kpage);
     }
