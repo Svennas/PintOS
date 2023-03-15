@@ -602,53 +602,38 @@ setup_stack (void **esp, int argc, char* argv[])
         printf("all arg_size = %i\n", arg_size);
 
         /* Round the stack pointer down to a multiple of 4 before the first push*/
+        /*
         arg_size = (arg_size % 4) + 4;
         *esp = PHYS_BASE - arg_size;  // Start address 
-        printf("*esp is %p\n", *esp);
-        *esp = *esp - sizeof(char);
-        //void* ptr = *esp;     // Copy the stack pointer
-        printf("*esp is %p\n", *esp);
+        */
+
+        /* Round the stack pointer down to a multiple of 4 before the first push*/
+        arg_size = (arg_size % 4) + 4;
+        void* s_ptr = PHYS_BASE - arg_size;  // Start address 
+        printf("stack ptr is %p\n", s_ptr);
 
         uint32_t size = 0;
 
         char* arg_ptrs[argc];   // To save pointers to arguments
         char* curr_arg;
-        char* stop;
-        char temp;
+
         /* Push arguments to stack in reverse order */
         printf("-----Push arguments to stack in reverse order-----\n");
         for (int i = argc-1; i >= 0; i--)
         {   // Loop for every word
-
-
           curr_arg = argv[i];
           size = strlen(argv[i]);   // Size of current argument
-          //curr_arg += size - 1;     // Get to the last relevant address in the argument
+          curr_arg += size - 1;     // Get to the last relevant address in the argument
 
-          *esp -= size - 1;
-          *(char*)esp = curr_arg;
-
-
-          //memcpy(*((char*)esp), curr_arg, size-1);
-          printf("*esp at %p = %c\n", *esp, (char*)esp);
-
-          /*for (; *curr_arg != '\0'; curr_arg--)
+          for (; *curr_arg != '\0'; curr_arg--)
           {
-            printf("CHAR = %c\n", *curr_arg);
-            temp = *curr_arg;
-            //printf("*esp is %p\n", *esp);
-
-            //memcpy(&(*((char*)esp)), &temp, 1);
-            *((char*)esp) = *curr_arg;
-            printf("*esp at %p = %c\n", *esp, *((char*)esp));
-            (*esp)--;  // Move address one step up the stack
-            //printf("*esp is %p\n", *esp);
-          }*/
-
-          arg_ptrs[i] = *esp;
-
+            *((char*)s_ptr) = *curr_arg;    // Push char to stack
+            printf("stack ptr at %p = %c\n", s_ptr, *((char*)s_ptr));
+            s_ptr--;  // Move address one step up the stack
+          }
+          arg_ptrs[i] = s_ptr + 1;  // Save the address to the first char in every arg
+          printf("arg_ptrs[i] = %p\n", arg_ptrs[i]);
         }
-        //physical address 0x1234 at (uint8_t *) PHYS_BASE + 0x1234
 
         /* Align the stack pointer to a multiple of 4 bytes */
         esp -= (uint32_t)esp % 4;   // Word align
