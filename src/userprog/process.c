@@ -602,13 +602,7 @@ setup_stack (void **esp, int argc, char* argv[])
         printf("all arg_size = %i\n", arg_size);
 
         /* Round the stack pointer down to a multiple of 4 before the first push*/
-        /*
-        arg_size = (arg_size % 4) + 4;
-        *esp = PHYS_BASE - arg_size;  // Start address 
-        */
-
-        /* Round the stack pointer down to a multiple of 4 before the first push*/
-        arg_size = (arg_size % 4) + 4;
+        arg_size = (arg_size % 4);
         void* s_ptr = PHYS_BASE - arg_size;  // Start address 
         printf("stack ptr is %p\n", s_ptr);
 
@@ -636,58 +630,65 @@ setup_stack (void **esp, int argc, char* argv[])
         }
 
         /* Align the stack pointer to a multiple of 4 bytes */
-        s_ptr -= (int)s_ptr % 4;   // Word align
+        s_ptr -= ((int)s_ptr % 4) + 4;   // Word align
         printf("After word-align, stack ptr is %p\n", s_ptr);
 
         /* Push a null pointer sentinel to the stack.
         The null pointer sentinel ensures that argv[argc] is a null pointer. */
         printf("-----Push a null pointer sentinel to the stack-----\n");
-        char* sentinel = NULL;
+        char* sentinel;
         //size = sizeof(char*);
         s_ptr -= sizeof(char*);
         printf("stack ptr is %p\n", s_ptr);
-        //memcpy(esp, &sentinel, size);
-        *((char*)s_ptr) = *sentinel;
-        printf("stack ptr at %p = %s\n", s_ptr, *((char*)s_ptr));
+        memcpy(s_ptr, &sentinel, sizeof(char*));
+        //*((char*)s_ptr) = *sentinel;
+        printf("stack ptr at %p = %s\n", s_ptr, (char*)s_ptr);
 
         /* Push all the the arguments (argv[argc] to argv[0]) */
         printf("-----Push all the the arguments (argv[argc] to argv[0])-----\n");
         char** argv_ptr;
-        for (int i = argc-1; i >= 0; i++)
+        char* arg_address;
+        for (int i = argc-1; i >= 0; i--)
         {
-          curr_arg = arg_ptrs[i];
+          printf("i = %i\n", i);
+          printf("arg_ptrs[i] = %p\n", arg_ptrs[i]);
+          //*argv_ptr = arg_ptrs[i];
+          //arg_address = arg_ptrs[i];
           s_ptr -= sizeof(char*);
-          (char*)s_ptr = curr_arg;
-          printf("stack ptr at %p = %p\n", s_ptr, *((char*)s_ptr));
+          memcpy(s_ptr, &(arg_ptrs[i]), sizeof(char*));
+          //(char*)s_ptr = curr_arg;
+          printf("stack ptr at %p = %s\n", s_ptr, (char*)s_ptr);
 
           if (i == 0)
           {
             /* Push argv (the address of argv[0]) */
             printf("-----Push argv (the address of argv[0])-----\n");
-            argv_ptr = &s_ptr;
-            s_ptr -= sizeof(char**);
-            printf("sizeof(char**) = %i\n", sizeof(char**));
-            (char*)s_ptr = *argv_ptr;
+            argv_ptr = s_ptr;
+            s_ptr -= sizeof(char*);
+            printf("sizeof(char*) = %i\n", sizeof(char*));
+            //*((char*)s_ptr) = *argv_ptr;
+            memcpy(s_ptr, argv_ptr, sizeof(char*));
+            printf("stack ptr at %p = %p\n", s_ptr, (char*)s_ptr);
           }
         }
 
         /* Push argc */
         printf("-----Push argc-----\n");
         s_ptr -= sizeof(int);     // Point to new address
-        (int*)s_ptr = argc;
-        //memcpy((int*)esp, argc, size);
-        printf("stack ptr at %p = %i\n", s_ptr, (int*)s_ptr);
+        //*((int)s_ptr) = argc;
+        memcpy(s_ptr, &argc, size);
+        printf("stack ptr at %p = %n\n", s_ptr, (int*)s_ptr);
 
         /* Push a fake "return address" */
         printf("-----Push a fake 'return address'-----\n");
         //uint32_t fake = 0;
-        void* fake = NULL;
+        void* fake;
         //esp -= (sizeof(uint32_t)) + 1;
         s_ptr -= sizeof(void*);
         printf("sizeof(void*) = %i\n", sizeof(void*));
         printf("stack ptr = %p\n", s_ptr);
-        //memcpy((char*)esp, &fake, sizeof(uint32_t));
-        *s_ptr = *fake;
+        memcpy(s_ptr, &fake, sizeof(void*));
+        //*s_ptr = fake;
 
         /* Align the stack pointer to a multiple of 4 bytes */
         printf("-----Align the stack pointer to a multiple of 4 bytes-----\n");
