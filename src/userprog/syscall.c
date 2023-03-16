@@ -175,6 +175,7 @@ threads/thread.h to deschedule the current thread and destroy it.
 */
 void exit (int status)
 {
+  printf("In exec()\n");
   for (int i = FD_START; i < FD_END; i++)
   {
     close(i);

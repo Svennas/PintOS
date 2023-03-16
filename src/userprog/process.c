@@ -288,10 +288,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  //printf("cmd_line before = %s\n", cmd_line);
-
   char *token, *save_ptr;
-
   char* argv[MAX_NR_ARGS];
   int argc = 0;
 
@@ -303,11 +300,11 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
     argc++;
   }
   argv[argc] = NULL;    // Last elem is NULL
+  
 
-  /* Get file_name */
+  // Get file_name 
   char* file_name;
-  file_name = argv[0];  
-  //printf("file_name = %s\n", file_name);
+  file_name = argv[0]; 
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -325,11 +322,12 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-//#define STACK_DEBUG
+#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);
   hex_dump((int)*esp , *esp, PHYS_BASE-*esp+16, true);
+  printf("-------------END OF HEX_DUMP-------------\n");
   /* The same information, only more verbose: */
   /* It prints every byte as if it was a char and every 32-bit aligned
      data as if it was a pointer. */
@@ -359,7 +357,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
     i++;
   }
 #endif
-
+  
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
@@ -367,7 +365,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-
+  
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -447,6 +445,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   success = true;
 
  done:
+  printf(" after done, success = %d\n", success);
   /* We arrive here whether the load is successful or not. */
   file_close (file);
   return success;
@@ -593,117 +592,111 @@ setup_stack (void **esp, int argc, char* argv[])
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
       {
-        /* Get the size of all the arguments. */
-        uint32_t arg_size = 0;
-        for (int i = 0; i < argc; i++)
-        {
-          arg_size += strlen(argv[i]) + 1; 
-        }
-        printf("all arg_size = %i\n", arg_size);
+        *esp = PHYS_BASE; 
+      
+        hex_dump((int)*esp , *esp, PHYS_BASE-*esp+16, true);
 
-        /* Round the stack pointer down to a multiple of 4 before the first push*/
-        arg_size = (arg_size % 4);
-        void* s_ptr = PHYS_BASE - arg_size;  // Start address 
+        void* s_ptr = *esp;
+
+        s_ptr--;
+        
+        // Get the size of all the arguments. 
+
+        // Round the stack pointer down to a multiple of 4 before the first push
+        //arg_size = (arg_size % 4);
+        //void* s_ptr = PHYS_BASE - arg_size;  // Start address 
         printf("stack ptr is %p\n", s_ptr);
 
-        uint32_t size = 0;
-
-        char* arg_ptrs[argc];   // To save pointers to arguments
+        void** arg_ptrs[argc];   // To save pointers to arguments
         char* curr_arg;
 
-        /* Push arguments to stack in reverse order */
-        printf("-----Push arguments to stack in reverse order-----\n");
-        for (int i = argc-1; i >= 0; i--)
+        // Push arguments to stack in reverse order 
+        //printf("-----Push arguments to stack in reverse order-----\n");
+        for (int c = argc-1; c >= 0; c--)
         {   // Loop for every word
-          curr_arg = argv[i];
-          size = strlen(argv[i]);   // Size of current argument
+          curr_arg = argv[c];
+          uint32_t size = strlen(argv[c]);   // Size of current argument
           curr_arg += size - 1;     // Get to the last relevant address in the argument
+
+
 
           for (; *curr_arg != '\0'; curr_arg--)
           {
+            printf("*curr_arg = %c\n", *curr_arg);
             *((char*)s_ptr) = *curr_arg;    // Push char to stack
             printf("stack ptr at %p = %c\n", s_ptr, *((char*)s_ptr));
             s_ptr--;  // Move address one step up the stack
           }
-          arg_ptrs[i] = s_ptr + 1;  // Save the address to the first char in every arg
-          printf("arg_ptrs[i] = %p\n", arg_ptrs[i]);
+          arg_ptrs[c] = s_ptr + 1;  // Save the address to the first char in every arg
+          printf("arg_ptrs[c] = %p\n", arg_ptrs[c]);
         }
 
-        /* Align the stack pointer to a multiple of 4 bytes */
+        // Align the stack pointer to a multiple of 4 bytes 
         s_ptr -= ((int)s_ptr % 4) + 4;   // Word align
-        printf("After word-align, stack ptr is %p\n", s_ptr);
+        //printf("After word-align, stack ptr is %p\n", s_ptr);
 
-        /* Push a null pointer sentinel to the stack.
-        The null pointer sentinel ensures that argv[argc] is a null pointer. */
-        printf("-----Push a null pointer sentinel to the stack-----\n");
-        char* sentinel;
-        //size = sizeof(char*);
-        s_ptr -= sizeof(char*);
-        printf("stack ptr is %p\n", s_ptr);
-        memcpy(s_ptr, &sentinel, sizeof(char*));
-        //*((char*)s_ptr) = *sentinel;
-        printf("stack ptr at %p = %s\n", s_ptr, (char*)s_ptr);
+        // Push a null pointer sentinel to the stack.
+        // The null pointer sentinel ensures that argv[argc] is a null pointer.
+        //printf("-----Push a null pointer sentinel to the stack-----\n");
+        //-->char* sentinel;
+        //-->s_ptr -= sizeof(char*);
+        //printf("stack ptr is %p\n", s_ptr);
+        //-->memcpy(s_ptr, &sentinel, sizeof(char*));
+        //printf("stack ptr at %p = %s\n", s_ptr, (char*)s_ptr);
 
-        /* Push all the the arguments (argv[argc] to argv[0]) */
-        printf("-----Push all the the arguments (argv[argc] to argv[0])-----\n");
-        char** argv_ptr;
-        char* arg_address;
-        for (int i = argc-1; i >= 0; i--)
+        // Push all the the arguments (argv[argc] to argv[0]) 
+        //printf("-----Push all the the arguments (argv[argc] to argv[0])-----\n");
+        char** arg_adrs;
+        for (int c = argc; c >= 0; c--)
         {
-          printf("i = %i\n", i);
-          printf("arg_ptrs[i] = %p\n", arg_ptrs[i]);
-          //*argv_ptr = arg_ptrs[i];
-          //arg_address = arg_ptrs[i];
+          //printf("c = %i\n", c);
+          //printf("arg_ptrs[c] = %p\n", arg_ptrs[c]);
           s_ptr -= sizeof(char*);
-          memcpy(s_ptr, &(arg_ptrs[i]), sizeof(char*));
-          //(char*)s_ptr = curr_arg;
-          printf("stack ptr at %p = %s\n", s_ptr, (char*)s_ptr);
+          memcpy(s_ptr, &(arg_ptrs[c]), sizeof(char*));
+          //printf("stack ptr at %p = %p\n", s_ptr, (void*)s_ptr);
 
-          if (i == 0)
+          if (c == 0)
           {
-            /* Push argv (the address of argv[0]) */
-            printf("-----Push argv (the address of argv[0])-----\n");
-            argv_ptr = s_ptr;
-            s_ptr -= sizeof(char*);
-            printf("sizeof(char*) = %i\n", sizeof(char*));
-            //*((char*)s_ptr) = *argv_ptr;
-            memcpy(s_ptr, argv_ptr, sizeof(char*));
-            printf("stack ptr at %p = %p\n", s_ptr, (char*)s_ptr);
+            // Push argv (the address of argv[0]) 
+            //printf("-----Push argv (the address of argv[0])-----\n");
+            arg_adrs = s_ptr;
+            s_ptr -= sizeof(char**);
+            //printf("sizeof(char*) = %i\n", sizeof(char*));
+            //   *((char*)s_ptr) = *argv_ptr;
+            memcpy(s_ptr, &arg_adrs, sizeof(char**));
+            //printf("stack ptr at %p = %p\n", s_ptr, (char*)s_ptr);
           }
         }
 
-        /* Push argc */
-        printf("-----Push argc-----\n");
+        // Push argc 
+        //printf("-----Push argc-----\n");
         s_ptr -= sizeof(int);     // Point to new address
-        //*((int)s_ptr) = argc;
-        memcpy(s_ptr, &argc, size);
-        printf("stack ptr at %p = %n\n", s_ptr, (int*)s_ptr);
+        memcpy(s_ptr, &argc, sizeof(int));
+        //printf("stack ptr at %p = %i\n", s_ptr, (int)s_ptr);
 
-        /* Push a fake "return address" */
-        printf("-----Push a fake 'return address'-----\n");
-        //uint32_t fake = 0;
+        // Push a fake "return address" 
+        //printf("-----Push a fake 'return address'-----\n");
         void* fake;
-        //esp -= (sizeof(uint32_t)) + 1;
         s_ptr -= sizeof(void*);
         printf("sizeof(void*) = %i\n", sizeof(void*));
-        printf("stack ptr = %p\n", s_ptr);
+        //printf("stack ptr = %p\n", s_ptr);
         memcpy(s_ptr, &fake, sizeof(void*));
-        //*s_ptr = fake;
 
-        /* Align the stack pointer to a multiple of 4 bytes */
-        printf("-----Align the stack pointer to a multiple of 4 bytes-----\n");
+        // Align the stack pointer to a multiple of 4 bytes 
+        //printf("-----Align the stack pointer to a multiple of 4 bytes-----\n");
         s_ptr -= (int)s_ptr % 4;
-        printf("stack ptr = %p\n", s_ptr);
+        //printf("stack ptr = %p\n", s_ptr);
 
-        esp = &s_ptr;
-        printf("*esp = %p\n", *esp);
+        *esp = (void*)s_ptr;
+
+        
+        //printf("*esp = %p\n", *esp);
       }
-
-      
 
       else
         palloc_free_page (kpage);
     }
+    printf("success = %d\n", success);
   return success;
 }
 
