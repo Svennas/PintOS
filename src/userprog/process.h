@@ -37,6 +37,10 @@ struct parent_child {
     struct thread* parent;   // To be able to reach the parent's semaphore
     struct list_elem child;  // Used by parent thread in the children list
     char* fn_copy;           // Needed for start_process to free the allocated page
+
+    /* Added in lab 5*/
+    pid_t child_pid;         // Needed to find the correct child in process_wait()
+    struct semaphore sleep;  // To put parent to sleep when waiting for child
 };
 
 #endif /* userprog/process.h */

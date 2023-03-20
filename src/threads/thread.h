@@ -37,6 +37,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Exit status. */
+#define SUCCESS 0                       /* Successfull thread exit. */
+#define FAIL -1                       /* Failed thread exit. */
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The

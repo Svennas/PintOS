@@ -131,13 +131,40 @@ start_process (void *aux)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) //Return the childs exit status
 {
-  int i = 0;
-  while(i == 0) {   // Added inf loop for Lab 1
+  // 1. wait for child and put parent to sleep
+  // 2. don't wait for child and just get the exit_status
+
+  struct thread curr = thread_current();
+  
+  struct list_elem *e;
+
+  for (e = list_begin (&curr->children); e != list_end (&curr->children);
+        e = list_next (e))
+  {
+      struct parent_child *status = list_entry (e, struct parent_child, child);
+      
+      if (status->child_pid == child_tid)   // Need to get the specified child process
+      {
+        if (status->alive_count == 1)       // Child has exited
+        {
+          return status->exit_status;
+        }
+
+        sema_init(&(status->sleep), 0);     // Sema to wait until child has exited
+
+        else  // Child has not exited, wait for it
+        {
+          sema_down(&(status->sleep));    // Wait until child has exited
+          if (status->alive_count == 1) 
+          {
+            sema_up(&(status->sleep));
+            return status->exit_status;
+          }   
+        }
+      }
   }
-  printf("out\n");
-  return -1;
 }
 
 /* Free the current process's resources. */

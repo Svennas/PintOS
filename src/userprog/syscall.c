@@ -75,6 +75,12 @@ syscall_handler (struct intr_frame *f)
     f->eax = exec (exec_arg);
   }
 
+  else if (syscall_nr == SYS_WAIT)
+  {
+    pid_t wait_arg = *((pid_t*)ARG_1);
+    f->eax = wait (wait_arg);
+  }
+
   else 
   {
     printf ("Not a valid system call!\n");
@@ -175,7 +181,7 @@ threads/thread.h to deschedule the current thread and destroy it.
 */
 void exit (int status)
 {
-  printf("In exec()\n");
+  printf("In exit()\n");
   for (int i = FD_START; i < FD_END; i++)
   {
     close(i);
@@ -187,7 +193,6 @@ void exit (int status)
 arguments, and returns the new process’ program id (pid). Must return pid -1
 if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
-//pid_t exec (const char *cmd_line)
 pid_t exec (const char *cmd_line)
 {
   // Not here when setting up the stack
@@ -201,4 +206,11 @@ pid_t exec (const char *cmd_line)
 
   //return process_execute (cmd_line);
   return process_execute (cmd_line);
+}
+
+/* Sleep the parent until child finishes and return the child’s exit status.
+   Wait for a child process to die. */
+int wait (pid_t pid)
+{
+  process_wait(pid);
 }
