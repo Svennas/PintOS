@@ -17,16 +17,6 @@ process_execute (const char *cmd_line)
   char *fn_copy;
   tid_t tid;
 
-  //printf("&file_name[0] = %p\n", file_name[0]);
-  //printf("file_name[0] = %c\n", cmd_line[0]);
-
-  /*char s[] = "  String to  tokenize. ";
-   char *token, *save_ptr;
-
-   for (token = strtok_r (s, " ", &save_ptr); token != NULL;
-        token = strtok_r (NULL, " ", &save_ptr))
-     printf ("'%s'\n", token);*/
-
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
 
@@ -42,12 +32,6 @@ process_execute (const char *cmd_line)
     status->alive_count = 1;  // Parent is still alive
     return TID_ERROR;
   }
-
-  //printf("fn_copy before: %s\n", fn_copy);
-  //printf("cmd_line: %s\n", cmd_line);
-
-  //printf("Before strlcpy\n");
-  //strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Make a copy of cmd_line.
      Otherwise there's a race between the caller and load(). */
@@ -162,6 +146,7 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (void)
 { 
+  printf("Process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
@@ -300,7 +285,6 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
     argc++;
   }
   argv[argc] = NULL;    // Last elem is NULL
-  
 
   // Get file_name 
   char* file_name;
@@ -312,12 +296,10 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  printf("before setup_stack\n");
   /* Set up stack. */
   if (!setup_stack (esp, argc, argv)){
     goto done;
   }
-  printf("after setup_stack\n");
 
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
@@ -445,7 +427,6 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   success = true;
 
  done:
-  printf(" after done, success = %d\n", success);
   /* We arrive here whether the load is successful or not. */
   file_close (file);
   return success;
@@ -594,7 +575,7 @@ setup_stack (void **esp, int argc, char* argv[])
       {
         *esp = PHYS_BASE; 
       
-        hex_dump((int)*esp , *esp, PHYS_BASE-*esp+16, true);
+        //hex_dump((int)*esp , *esp, PHYS_BASE-*esp+16, true);
 
         void* s_ptr = *esp;
 
@@ -606,29 +587,30 @@ setup_stack (void **esp, int argc, char* argv[])
         //arg_size = (arg_size % 4);
         //void* s_ptr = PHYS_BASE - arg_size;  // Start address 
         printf("stack ptr is %p\n", s_ptr);
+        printf(" \n");
 
         void** arg_ptrs[argc];   // To save pointers to arguments
         char* curr_arg;
 
         // Push arguments to stack in reverse order 
         //printf("-----Push arguments to stack in reverse order-----\n");
+
         for (int c = argc-1; c >= 0; c--)
-        {   // Loop for every word
+        {
+          int size = strlen(argv[c]);
           curr_arg = argv[c];
-          uint32_t size = strlen(argv[c]);   // Size of current argument
-          curr_arg += size - 1;     // Get to the last relevant address in the argument
+          char *next_arg = curr_arg - 1;
+          
+          curr_arg += size;
 
-
-
-          for (; *curr_arg != '\0'; curr_arg--)
+          for(; curr_arg != next_arg; curr_arg--)
           {
-            printf("*curr_arg = %c\n", *curr_arg);
             *((char*)s_ptr) = *curr_arg;    // Push char to stack
-            printf("stack ptr at %p = %c\n", s_ptr, *((char*)s_ptr));
             s_ptr--;  // Move address one step up the stack
           }
+
           arg_ptrs[c] = s_ptr + 1;  // Save the address to the first char in every arg
-          printf("arg_ptrs[c] = %p\n", arg_ptrs[c]);
+          //printf("arg_ptrs[c] = %p\n", arg_ptrs[c]);
         }
 
         // Align the stack pointer to a multiple of 4 bytes 
@@ -678,7 +660,7 @@ setup_stack (void **esp, int argc, char* argv[])
         //printf("-----Push a fake 'return address'-----\n");
         void* fake;
         s_ptr -= sizeof(void*);
-        printf("sizeof(void*) = %i\n", sizeof(void*));
+        //printf("sizeof(void*) = %i\n", sizeof(void*));
         //printf("stack ptr = %p\n", s_ptr);
         memcpy(s_ptr, &fake, sizeof(void*));
 
@@ -687,7 +669,7 @@ setup_stack (void **esp, int argc, char* argv[])
         s_ptr -= (int)s_ptr % 4;
         //printf("stack ptr = %p\n", s_ptr);
 
-        *esp = (void*)s_ptr;
+        *esp = s_ptr;
 
         
         //printf("*esp = %p\n", *esp);
@@ -696,7 +678,6 @@ setup_stack (void **esp, int argc, char* argv[])
       else
         palloc_free_page (kpage);
     }
-    printf("success = %d\n", success);
   return success;
 }
 

@@ -271,8 +271,8 @@ thread_exit (void)
 #ifdef USERPROG
 
   struct thread* curr = thread_current(); 
-  printf("thread_current(): %d\n",curr->tid);
-  printf("curr->parent_info->alive_count = %i\n", curr->parent_info->alive_count);
+  //printf("thread_current(): %d\n",curr->tid);
+  //printf("curr->parent_info->alive_count = %i\n", curr->parent_info->alive_count);
 
   struct lock block;
   lock_init(&block);
