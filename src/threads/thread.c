@@ -150,7 +150,7 @@ tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  printf("(In thread_create) Current thread ID: %d\n",thread_current()->tid);
+  //printf("(In thread_create) Current thread ID: %d\n",thread_current()->tid);
 
   struct thread *t;
   struct kernel_thread_frame *kf;
@@ -270,7 +270,7 @@ thread_exit (void)
 #ifdef USERPROG
 
   struct thread* curr = thread_current(); 
-  printf("thread_current(): %d\n",curr->tid);
+  //printf("thread_current(): %d\n",curr->tid);
   //printf("curr->parent_info->alive_count = %i\n", curr->parent_info->alive_count);
   //printf("curr->parent_info->alive_count = %p\n", curr->parent_info);
 
@@ -280,7 +280,7 @@ thread_exit (void)
   /* Thread with no children. */
   if (list_empty(&curr->children)) 
   { 
-    if (!(curr->parent_info == NULL))   // Check that it's not init thread
+    if (!(curr->parent_info == NULL))   // Check that it's not init thread with no child
     {
       lock_acquire(&block);
 
@@ -289,13 +289,16 @@ thread_exit (void)
 
       lock_release(&block);
 
+      /* Wake up parent in process_wait if it exists. */
+      sema_up(&(curr->parent_info->sleep));  
+
       if (curr->parent_info->alive_count == 0)
       {
         free(curr->parent_info);
       }
     }
   }
-  else 
+  else /* Parent threads go here, which means parent can exit before child. */
   {
     while (!list_empty (&curr->children))
     {
@@ -315,10 +318,9 @@ thread_exit (void)
       }
     }
   }
-  printf("out of if\n");
+
   process_exit ();
 #endif
-  printf("after process exit\n");
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */

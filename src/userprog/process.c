@@ -11,8 +11,8 @@ tid_t
 //process_execute (const char *file_name) 
 process_execute (const char *cmd_line) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in process_execute\n");
-  printf("Current thread ID: %d\n",thread_current()->tid);
+  //printf("in process_execute\n");
+  //printf("In process_execute, current thread ID: %d\n",thread_current()->name);
 
   char *fn_copy;
   tid_t tid;
@@ -20,14 +20,15 @@ process_execute (const char *cmd_line)
   struct parent_child* status = (struct parent_child*) malloc(sizeof(struct parent_child));
   struct thread* curr = thread_current();
 
-  sema_init(&(curr->wait), 0);   // Init sema for waiting while creating new process
+  sema_init(&(curr->wait), 0);    // Init sema for waiting while creating new process
+  sema_init(&(status->sleep), 0); // Sema to wait until child has exited
 
   /* Allocate page for fn_copy, which here is empty. */
   fn_copy = palloc_get_page (0);
 
   if (fn_copy == NULL) 
   {
-    printf("fn_copy == NULL\n");
+    //printf("fn_copy == NULL\n");
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
     return TID_ERROR;
@@ -54,7 +55,7 @@ process_execute (const char *cmd_line)
   /* Couldn't allocate thread. */  
   if (tid == TID_ERROR) 
   {     
-    printf("TID_ERROR!\n");
+    //printf("TID_ERROR!\n");
     palloc_free_page (fn_copy);
 
     status->exit_status = -1; // So we know that it failed
@@ -63,7 +64,7 @@ process_execute (const char *cmd_line)
     /* Child thread is finished, let parent continue executing. */
     sema_up(&(status->parent->wait));
   }
-
+  //printf("returning tid: %i\n", tid);
   return tid;
 }
 
@@ -72,7 +73,7 @@ process_execute (const char *cmd_line)
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in start_process\n");
+  //printf("in start_process\n");
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
@@ -90,17 +91,17 @@ start_process (void *aux)
        - Allocating and activating page directory
        - Setting up the stack.*/
   success = load (file_name, &if_.eip, &if_.esp);
-  //success = load (file_name, &if_.eip, &if_.esp, args);
 
   /* Free the allocated page for fn_copy. */
   palloc_free_page (file_name);
 
   status->exit_status = 0;    // Initial value 
   status->alive_count = 2;    // Initial value, both child and parent are alive
+  status->child_tid = thread_current()->tid;
   
   /* If load failed, quit. */
   if (!success) {
-    printf("no success\n");
+    //printf("no success\n");
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
     thread_exit ();
@@ -135,8 +136,9 @@ process_wait (tid_t child_tid) //Return the childs exit status
 {
   // 1. wait for child and put parent to sleep
   // 2. don't wait for child and just get the exit_status
+  //printf("process_wait()\n");
 
-  struct thread curr = thread_current();
+  struct thread* curr = thread_current();
   
   struct list_elem *e;
 
@@ -145,33 +147,40 @@ process_wait (tid_t child_tid) //Return the childs exit status
   {
       struct parent_child *status = list_entry (e, struct parent_child, child);
       
-      if (status->child_pid == child_tid)   // Need to get the specified child process
+      if (status->child_tid == child_tid)   // Need to get the specified child process
       {
         if (status->alive_count == 1)       // Child has exited
         {
+          //printf("Child has exited\n");
           return status->exit_status;
         }
-
-        sema_init(&(status->sleep), 0);     // Sema to wait until child has exited
-
-        else  // Child has not exited, wait for it
+        else if (status->alive_count == 2)  // Child has not exited, wait for it
         {
+          //printf("Child has not exited, will wait\n");
           sema_down(&(status->sleep));    // Wait until child has exited
+          //printf("PArent done sleeping\n");
+
           if (status->alive_count == 1) 
           {
-            sema_up(&(status->sleep));
             return status->exit_status;
           }   
         }
+        else // Something is wrong 
+        {
+          status->exit_status = -1;
+          return status->exit_status;
+        }
       }
   }
+  //printf("out of for\n");
+  return -1;
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 { 
-  printf("Process_exit\n");
+  //printf("Process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
@@ -289,7 +298,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t
 bool
 load (const char *cmd_line, void (**eip) (void), void **esp) 
 {
-  printf("in load\n");
+  //printf("in load\n");
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;

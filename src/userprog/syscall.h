@@ -16,6 +16,8 @@
 #include "userprog/process.h"
 #include "threads/synch.h"
 #include "lib/string.h"
+#include "pagedir.h"
+#include "threads/vaddr.h"
 
 /* Lab 1 */
 void syscall_init (void);
@@ -35,5 +37,10 @@ pid_t exec (const char *cmd_line);
 /* Lab 4 */
 #define MAX_SIZE_ARG 32*4;
 
+/* Lab 5*/
+bool is_ptr_valid (void* esp);
+bool is_str_valid (char* str);
+bool is_bufr_valid (void* buffer, unsigned size);
+bool is_fd_valid (int fd);
 
 #endif /* userprog/syscall.h */

@@ -39,7 +39,7 @@ struct parent_child {
     char* fn_copy;           // Needed for start_process to free the allocated page
 
     /* Added in lab 5*/
-    pid_t child_pid;         // Needed to find the correct child in process_wait()
+    tid_t child_tid;         // Needed to find the correct child in process_wait()
     struct semaphore sleep;  // To put parent to sleep when waiting for child
 };
 
