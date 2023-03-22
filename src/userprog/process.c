@@ -12,7 +12,7 @@ tid_t
 process_execute (const char *cmd_line) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
   //printf("in process_execute\n");
-  //printf("In process_execute, current thread ID: %d\n",thread_current()->name);
+  printf("In process_execute, current thread ID: %d\n",thread_current()->tid);
 
   char *fn_copy;
   tid_t tid;
@@ -37,7 +37,6 @@ process_execute (const char *cmd_line)
   /* Make a copy of cmd_line.
      Otherwise there's a race between the caller and load(). */
   strlcpy (fn_copy, cmd_line, PGSIZE);
-  //printf("fn_copy after: %s\n", fn_copy);
   
   status->fn_copy = fn_copy;
   status->parent = curr;
@@ -46,7 +45,6 @@ process_execute (const char *cmd_line)
   list_push_front(&(curr->children), &(status->child)); 
 
   /* Create a new thread to execute FILE_NAME. */
-  //tid = thread_create (file_name, PRI_DEFAULT, start_process, status);
   tid = thread_create (cmd_line, PRI_DEFAULT, start_process, status);
 
   /* Make current thread wait while child start executing. */
@@ -73,7 +71,7 @@ process_execute (const char *cmd_line)
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  //printf("in start_process\n");
+  printf("in start_process\n");
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
@@ -136,7 +134,7 @@ process_wait (tid_t child_tid) //Return the childs exit status
 {
   // 1. wait for child and put parent to sleep
   // 2. don't wait for child and just get the exit_status
-  //printf("process_wait()\n");
+  printf("process_wait()\n");
 
   struct thread* curr = thread_current();
   
@@ -151,14 +149,14 @@ process_wait (tid_t child_tid) //Return the childs exit status
       {
         if (status->alive_count == 1)       // Child has exited
         {
-          //printf("Child has exited\n");
+          printf("Child has exited\n");
           return status->exit_status;
         }
         else if (status->alive_count == 2)  // Child has not exited, wait for it
         {
-          //printf("Child has not exited, will wait\n");
+          printf("Child has not exited, will wait\n");
           sema_down(&(status->sleep));    // Wait until child has exited
-          //printf("PArent done sleeping\n");
+          printf("PArent done sleeping\n");
 
           if (status->alive_count == 1) 
           {
@@ -172,7 +170,7 @@ process_wait (tid_t child_tid) //Return the childs exit status
         }
       }
   }
-  //printf("out of for\n");
+  printf("out of for\n");
   return -1;
 }
 
