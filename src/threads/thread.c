@@ -164,7 +164,7 @@ thread_create (const char *name, int priority,
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
     return TID_ERROR;
-
+ 
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
@@ -270,38 +270,20 @@ thread_exit (void)
 #ifdef USERPROG
 
   struct thread* curr = thread_current(); 
-  //printf("thread_current(): %d\n",curr->tid);
+  //printf("\n(In thread exit) Current thread ID: %d\n\n",thread_current()->tid);
   //printf("curr->parent_info->alive_count = %i\n", curr->parent_info->alive_count);
   //printf("curr->parent_info->alive_count = %p\n", curr->parent_info);
+  //printf("thread exit\n");
 
   struct lock block;
   lock_init(&block);
 
-  /* Thread with no children. */
-  if (list_empty(&curr->children)) 
-  { 
-    if (!(curr->parent_info == NULL))   // Check that it's not init thread with no child
-    {
-      lock_acquire(&block);
-
-      curr->parent_info->alive_count--;
-      curr->parent_info->exit_status = SUCCESS;
-
-      lock_release(&block);
-
-      /* Wake up parent in process_wait if it exists. */
-      sema_up(&(curr->parent_info->sleep));  
-
-      if (curr->parent_info->alive_count == 0)
-      {
-        free(curr->parent_info);
-      }
-    }
-  }
-  else /* Parent threads go here, which means parent can exit before child. */
+  /* Parent threads go here, which means parent can exit before child. */
+  if (!(list_empty(&curr->children))) 
   {
     while (!list_empty (&curr->children))
     {
+      //printf("in while\n");
       struct list_elem *e = list_pop_front (&curr->children);
       
       struct parent_child* status = list_entry (e, struct parent_child, child);
@@ -310,24 +292,60 @@ thread_exit (void)
 
       status->alive_count--;    // Remove one for the parent.
 
-      lock_release(&block);
-
       if (status->alive_count == 0) 
       {
+        lock_release(&block);
+        //printf("Child is dead\n");
         free(status);     // Free if both are dead
       }
+      //else printf("Child is still alive\n");
     }
+    //printf("\nTID 3 parent: %i\n\n", curr->parent_info->parent->tid);
   }
+
+    /* Thread with no children. */
+  //if (list_empty(&curr->children)) 
+  //{ 
+    if (curr->parent_info != NULL)   // Check that it's not init thread with no child
+    {
+      lock_acquire(&block);
+
+      curr->parent_info->alive_count--;
+      curr->parent_info->exit_status = SUCCESS;
+
+      if (curr->parent_info->alive_count == 0)
+      {
+        lock_release(&block);
+        //printf("Parent is dead\n");
+        free(curr->parent_info);
+      }
+      else
+      {
+        lock_release(&block);
+        //printf("Parent is still alive\n");
+
+        /* Wake up parent in process_wait if it exists. */
+        //printf("\nbefore sema_up sleep\n\n");
+        sema_up(&(curr->parent_info->sleep)); 
+        
+        
+        //printf("sema_up curr->parent_info->sleep\n");
+      }
+    }
+  //}
 
   process_exit ();
 #endif
+  //printf("After process_exit\n");
+  //if (list_empty (&ready_list)) printf("Ready list is empty\n");
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
+  //printf("After intr_disable\n");
   thread_current ()->status = THREAD_DYING;
-  //printf("panda\n");
-  schedule ();
+  // No prints here
+  schedule ();  //Schedules new process. Next thread = idle when exit on init_thread.
   NOT_REACHED ();
 }
 

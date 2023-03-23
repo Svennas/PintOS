@@ -12,7 +12,7 @@ tid_t
 process_execute (const char *cmd_line) 
 {   /* <<<< This function has been changed for lab 3 >>>> */
   //printf("in process_execute\n");
-  printf("In process_execute, current thread ID: %d\n",thread_current()->tid);
+  //printf("In process_execute, current thread ID: %d\n",thread_current()->tid);
 
   char *fn_copy;
   tid_t tid;
@@ -48,7 +48,9 @@ process_execute (const char *cmd_line)
   tid = thread_create (cmd_line, PRI_DEFAULT, start_process, status);
 
   /* Make current thread wait while child start executing. */
+  //printf("before sema_down wait\n");
   sema_down(&(curr->wait)); 
+  //printf("sema_down curr->wait\n");
 
   /* Couldn't allocate thread. */  
   if (tid == TID_ERROR) 
@@ -60,8 +62,12 @@ process_execute (const char *cmd_line)
     status->alive_count = 1;  // Parent is still alive
 
     /* Child thread is finished, let parent continue executing. */
+    //printf("before sema_up wait\n");
     sema_up(&(status->parent->wait));
+    //printf("TID ERROR: sema_up status->parent->wait\n");
   }
+  status->child_tid = tid;
+  //printf("end of process execute\n");
   //printf("returning tid: %i\n", tid);
   return tid;
 }
@@ -71,7 +77,7 @@ process_execute (const char *cmd_line)
 static void
 start_process (void *aux)
 {     /* <<<< This function has been changed for lab 3 >>>> */
-  printf("in start_process\n");
+  //printf("in start_process\n");
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
@@ -95,7 +101,7 @@ start_process (void *aux)
 
   status->exit_status = 0;    // Initial value 
   status->alive_count = 2;    // Initial value, both child and parent are alive
-  status->child_tid = thread_current()->tid;
+  
   
   /* If load failed, quit. */
   if (!success) {
@@ -106,9 +112,12 @@ start_process (void *aux)
   }
   
   /* Not in critical section anymore. Let parent continue executing. */
+  //printf("before sema_up wait\n");
   sema_up(&(status->parent->wait));
+  //printf("sema_up status->parent->wait\n");
 
   thread_current()->parent_info = status;
+  //printf("end of start process\n");
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -134,7 +143,8 @@ process_wait (tid_t child_tid) //Return the childs exit status
 {
   // 1. wait for child and put parent to sleep
   // 2. don't wait for child and just get the exit_status
-  printf("process_wait()\n");
+  //printf("process_wait()\n");
+  //printf("\n(In process_wait()) Current thread ID: %d\n",thread_current()->tid);
 
   struct thread* curr = thread_current();
   
@@ -149,28 +159,34 @@ process_wait (tid_t child_tid) //Return the childs exit status
       {
         if (status->alive_count == 1)       // Child has exited
         {
-          printf("Child has exited\n");
+          //printf("\nChild has exited, alive count = 1\n\n");
+          //printf("Child has exited\n");
           return status->exit_status;
         }
         else if (status->alive_count == 2)  // Child has not exited, wait for it
         {
-          printf("Child has not exited, will wait\n");
+          //printf("Child has not exited, will wait\n");
+          //printf("\nbefore sema_down sleep\n\n");
           sema_down(&(status->sleep));    // Wait until child has exited
-          printf("PArent done sleeping\n");
+          //printf("sema_down for status->sleep\n");
+          //printf("\nPArent done sleeping\n\n");
 
           if (status->alive_count == 1) 
           {
+            //printf("\nAlive count == 1\n\n");
             return status->exit_status;
           }   
         }
         else // Something is wrong 
         {
+          //printf("\nSomething is wrong\n\n");
           status->exit_status = -1;
           return status->exit_status;
         }
       }
   }
-  printf("out of for\n");
+  //printf("out of for\n");
+  //printf("\nFound no child with that tid\n\n");
   return -1;
 }
 
@@ -607,24 +623,34 @@ setup_stack (void **esp, int argc, char* argv[])
 
         /* Need to lower with one to start on 0xbfffffff. Otherwise the stack pointer 
         will start on 0xc0000000, which is reserved for Kernel Space */
-        s_ptr--;  
+        //s_ptr--;  
 
         void** arg_ptrs[argc];    // To save pointers to arguments
         char* curr_arg;           // To easier handle the current argument
 
+        /* Push null to the stack as the first char. */
+        //s_ptr--;  // Move address one step up the stack
+        //s_ptr -= ((int)s_ptr % 4) + 4;
+        //*((char*)s_ptr) = (char)NULL;    // Push char to stack
+        //curr_arg = argv[argc];
+        //(void*)s_ptr = *curr_arg;    // Push char to stack
+        //s_ptr--;  // Move address one step up the stack
+        //s_ptr -= sizeof(char*);
+        //memcpy(s_ptr, &(arg_ptrs[argc]), sizeof(char*)); 
+
         /* Push arguments to stack in reverse order */ 
         for (int c = argc-1; c >= 0; c--)
-        {
+        { 
           int size = strlen(argv[c]);
           curr_arg = argv[c];
           char *next_arg = curr_arg - 1;
           curr_arg += size;
           for(; curr_arg != next_arg; curr_arg--)
           {
-            *((char*)s_ptr) = *curr_arg;    // Push char to stack
             s_ptr--;  // Move address one step up the stack
+            *((char*)s_ptr) = *curr_arg;    // Push char to stack
           }
-          arg_ptrs[c] = s_ptr + 1;  // Save the address to the first char in every arg
+          arg_ptrs[c] = s_ptr;  // Save the address to the first char in every arg
         }
 
         /* Align the stack pointer to a multiple of 4 bytes */ 
@@ -637,6 +663,7 @@ setup_stack (void **esp, int argc, char* argv[])
         {
           s_ptr -= sizeof(char*);
           memcpy(s_ptr, &(arg_ptrs[c]), sizeof(char*));
+          //printf("%p\n", (char*)s_ptr);
 
           /* After argv[0], push argv (the address of argv[0]) on the stack. */
           if (c == 0)

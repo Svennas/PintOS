@@ -229,7 +229,7 @@ threads/thread.h to deschedule the current thread and destroy it.
 */
 void exit (int status)
 {
-  printf("In exit()\n");
+  //printf("In exit()\n");
   thread_current()->parent_info->exit_status = status;
 
   printf("%s: exit(%d)\n", thread_current()->name, 
@@ -248,7 +248,7 @@ if the program cannot load or run for any reason. For now you may ignore the
 arguments in cmd line and use only the program name to execute it. */
 pid_t exec (const char *cmd_line)
 { 
-  printf("In exec()\n");
+  //printf("In exec()\n");
   return process_execute (cmd_line);
 }
 
@@ -256,9 +256,9 @@ pid_t exec (const char *cmd_line)
    Wait for a child process to die. */
 int wait (pid_t pid)   
 {
-  printf("In wait()\n");
+  //printf("In wait()\n");
   int temp = process_wait(pid);
-  printf("Exit status is %i\n", temp);
+  //printf("Exit status is %i\n", temp);
   return temp;
 }
 
