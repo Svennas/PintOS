@@ -321,7 +321,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   int i;
 
   char *token, *save_ptr;
-  char* argv[MAX_NR_ARGS];
+  char* argv[MAX_NR_ARGS] = {NULL};
   int argc = 0;
 
   for (token = strtok_r (cmd_line, " ", &save_ptr); token != NULL;
@@ -330,6 +330,8 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
     argv[argc] = token;
     //printf("argv = %s\n", argv[argc]);
     argc++;
+    //printf("argc = %i\n", argc);
+    //if (argc == MAX_NR_ARGS - 1) break;
   }
   argv[argc] = NULL;    // Last elem is NULL
 
@@ -638,7 +640,13 @@ setup_stack (void **esp, int argc, char* argv[])
         //s_ptr -= sizeof(char*);
         //memcpy(s_ptr, &(arg_ptrs[argc]), sizeof(char*)); 
 
-        /* Push arguments to stack in reverse order */ 
+        //curr_arg = argv[argc];
+        //s_ptr -= sizeof(NULL);  // Move address one step up the stack
+        //*((char*)s_ptr) = curr_arg;    // Push char to stack
+        //memcpy(s_ptr, NULL, sizeof(NULL));
+
+        /* Push arguments to stack in reverse order. 
+           From testing in lab 5, need to add null somewhere. */ 
         for (int c = argc-1; c >= 0; c--)
         { 
           int size = strlen(argv[c]);
@@ -649,12 +657,21 @@ setup_stack (void **esp, int argc, char* argv[])
           {
             s_ptr--;  // Move address one step up the stack
             *((char*)s_ptr) = *curr_arg;    // Push char to stack
+            //s_ptr--;  // Move address one step up the stack
+            //*((char*)s_ptr) = 'a';    // Push char to stack
+            
+            //memcpy(s_ptr, *curr_arg, sizeof(char) + 1);
           }
+          //s_ptr--;
+          //*((char*)s_ptr) = '\0'; //Testing to add null to pass tests
+
           arg_ptrs[c] = s_ptr;  // Save the address to the first char in every arg
         }
 
         /* Align the stack pointer to a multiple of 4 bytes */ 
         s_ptr -= ((int)s_ptr % 4) + 4;  // Make sure there is atleast 4 addresses between
+
+        
 
         /* Push the address of each string plus a null pointer sentinel, on the stack, 
           in right-to-left order. */
@@ -669,8 +686,10 @@ setup_stack (void **esp, int argc, char* argv[])
           if (c == 0)
           {
             arg_adrs = s_ptr;
-            s_ptr -= sizeof(char**);
+            //s_ptr -= sizeof(char**);
+            s_ptr -= (argc * 4);
             memcpy(s_ptr, &arg_adrs, sizeof(char**));
+            //*((char**) s_ptr) = (char **)(s_ptr + sizeof(char**));
           }
         }
 
@@ -679,12 +698,15 @@ setup_stack (void **esp, int argc, char* argv[])
         memcpy(s_ptr, &argc, sizeof(int));
 
         /* Push a fake "return address" on the stack. */
-        void* fake;
-        s_ptr -= sizeof(void*);
-        memcpy(s_ptr, &fake, sizeof(void*));
+        //void* fake;
+        //s_ptr -= sizeof(void*);
+        //memcpy(s_ptr, &fake, sizeof(void*));
 
         /* Align the stack pointer to a multiple of 4 bytes. */ 
-        s_ptr -= (int)s_ptr % 4;
+        //s_ptr -= (int)s_ptr % 4;
+
+        s_ptr -= sizeof(void*);
+        *((void**)s_ptr) = NULL;
 
         /* Assign the stack pointer to esp. */
         *esp = s_ptr;
