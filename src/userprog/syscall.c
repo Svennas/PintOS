@@ -230,7 +230,10 @@ threads/thread.h to deschedule the current thread and destroy it.
 void exit (int status)
 {
   //printf("In exit()\n");
-  thread_current()->parent_info->exit_status = status;
+  if (thread_current()->parent_info != NULL)
+  {
+    thread_current()->parent_info->exit_status = status;
+  }
 
   printf("%s: exit(%d)\n", thread_current()->name, 
     thread_current()->parent_info->exit_status);

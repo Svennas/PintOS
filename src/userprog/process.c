@@ -81,6 +81,7 @@ start_process (void *aux)
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
+  //printf("in start process file name = %s\n", file_name);
 
   struct intr_frame if_;
   bool success;
@@ -339,6 +340,10 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   char* file_name;
   file_name = argv[0]; 
 
+  strlcpy (t->name, file_name, sizeof t->name);
+
+  //printf("t->name = %s\n", t->name);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -390,7 +395,7 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
 #endif
   
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (file_name); 
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -623,10 +628,6 @@ setup_stack (void **esp, int argc, char* argv[])
         *esp = PHYS_BASE; 
         void* s_ptr = *esp; 
 
-        /* Need to lower with one to start on 0xbfffffff. Otherwise the stack pointer 
-        will start on 0xc0000000, which is reserved for Kernel Space */
-        //s_ptr--;  
-
         void** arg_ptrs[argc];    // To save pointers to arguments
         char* curr_arg;           // To easier handle the current argument
 
@@ -649,6 +650,10 @@ setup_stack (void **esp, int argc, char* argv[])
            From testing in lab 5, need to add null somewhere. */ 
         for (int c = argc-1; c >= 0; c--)
         { 
+          //s_ptr--;
+          //*curr_arg = '\0';
+          //*((char*)s_ptr) = *curr_arg; //Testing to add null to pass tests
+
           int size = strlen(argv[c]);
           curr_arg = argv[c];
           char *next_arg = curr_arg - 1;
@@ -662,8 +667,7 @@ setup_stack (void **esp, int argc, char* argv[])
             
             //memcpy(s_ptr, *curr_arg, sizeof(char) + 1);
           }
-          //s_ptr--;
-          //*((char*)s_ptr) = '\0'; //Testing to add null to pass tests
+          
 
           arg_ptrs[c] = s_ptr;  // Save the address to the first char in every arg
         }
@@ -671,12 +675,14 @@ setup_stack (void **esp, int argc, char* argv[])
         /* Align the stack pointer to a multiple of 4 bytes */ 
         s_ptr -= ((int)s_ptr % 4) + 4;  // Make sure there is atleast 4 addresses between
 
-        
+        /* Make sure that argv[argc] is null on the stack. */
+        s_ptr -= sizeof(char*);
+        *((char**)s_ptr) = (char*)NULL;
 
         /* Push the address of each string plus a null pointer sentinel, on the stack, 
           in right-to-left order. */
         char** arg_adrs;
-        for (int c = argc; c >= 0; c--)
+        for (int c = argc-1; c >= 0; c--)
         {
           s_ptr -= sizeof(char*);
           memcpy(s_ptr, &(arg_ptrs[c]), sizeof(char*));
@@ -687,7 +693,8 @@ setup_stack (void **esp, int argc, char* argv[])
           {
             arg_adrs = s_ptr;
             //s_ptr -= sizeof(char**);
-            s_ptr -= (argc * 4);
+            //printf("all args size = %i\n", ((argc * 2) * 4));
+            s_ptr -= ((argc * 2) * 4);
             memcpy(s_ptr, &arg_adrs, sizeof(char**));
             //*((char**) s_ptr) = (char **)(s_ptr + sizeof(char**));
           }
@@ -698,22 +705,22 @@ setup_stack (void **esp, int argc, char* argv[])
         memcpy(s_ptr, &argc, sizeof(int));
 
         /* Push a fake "return address" on the stack. */
-        //void* fake;
-        //s_ptr -= sizeof(void*);
+        void* fake;
+        s_ptr -= sizeof(void*);
+        *((void**)s_ptr) = (void*)NULL;
         //memcpy(s_ptr, &fake, sizeof(void*));
 
         /* Align the stack pointer to a multiple of 4 bytes. */ 
         //s_ptr -= (int)s_ptr % 4;
 
-        s_ptr -= sizeof(void*);
-        *((void**)s_ptr) = NULL;
-
         /* Assign the stack pointer to esp. */
         *esp = s_ptr;
       }
+      
 
-      else
+      else {
         palloc_free_page (kpage);
+      }
     }
   return success;
 }
