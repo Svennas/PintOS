@@ -40,6 +40,8 @@ process_execute (const char *cmd_line)
   
   status->fn_copy = fn_copy;
   status->parent = curr;
+  status->has_waited = false;
+  status->load_success = true;
 
   /* Add status to the list in the current thread (parent) */
   list_push_front(&(curr->children), &(status->child)); 
@@ -67,6 +69,10 @@ process_execute (const char *cmd_line)
     //printf("TID ERROR: sema_up status->parent->wait\n");
   }
   status->child_tid = tid;
+
+  if ((!status->load_success)) return -1;
+
+  //printf("\nend of process exec: Current thread ID: %d\n\n",thread_current()->tid);
   //printf("end of process execute\n");
   //printf("returning tid: %i\n", tid);
   return tid;
@@ -83,7 +89,7 @@ start_process (void *aux)
   char *file_name = status->fn_copy;
   //printf("in start process file name = %s\n", file_name);
 
-  struct intr_frame if_;
+  struct intr_frame if_; 
   bool success;
 
   /* Initialize interrupt frame and load executable. */
@@ -107,18 +113,20 @@ start_process (void *aux)
   /* If load failed, quit. */
   if (!success) {
     //printf("no success\n");
+    status->load_success = false;
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
+    sema_up(&(status->parent->wait));
     thread_exit ();
   }
-  
+  //printf("After failed load\n");
   /* Not in critical section anymore. Let parent continue executing. */
   //printf("before sema_up wait\n");
   sema_up(&(status->parent->wait));
   //printf("sema_up status->parent->wait\n");
 
   thread_current()->parent_info = status;
-  //printf("end of start process\n");
+  //printf("end of start process\n"); 
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -127,7 +135,7 @@ start_process (void *aux)
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  NOT_REACHED ();
+  NOT_REACHED (); 
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -158,14 +166,19 @@ process_wait (tid_t child_tid) //Return the childs exit status
       
       if (status->child_tid == child_tid)   // Need to get the specified child process
       {
+        // Return -1 immediately if child has already called wait()
+        if (status->has_waited) return -1;
+
+        status->has_waited = true; // Make this child can only wait once
+
         if (status->alive_count == 1)       // Child has exited
         {
           //printf("\nChild has exited, alive count = 1\n\n");
           //printf("Child has exited\n");
-          return status->exit_status;
+          return status->exit_status; 
         }
         else if (status->alive_count == 2)  // Child has not exited, wait for it
-        {
+        { 
           //printf("Child has not exited, will wait\n");
           //printf("\nbefore sema_down sleep\n\n");
           sema_down(&(status->sleep));    // Wait until child has exited
@@ -182,7 +195,7 @@ process_wait (tid_t child_tid) //Return the childs exit status
         {
           //printf("\nSomething is wrong\n\n");
           status->exit_status = -1;
-          return status->exit_status;
+          return status->exit_status; 
         }
       }
   }

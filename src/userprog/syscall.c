@@ -214,7 +214,7 @@ int write (int fd, const void *buffer, unsigned size)
 
   if (fd == STDOUT_FILENO)
   {
-    putbuf (buffer, size);
+    putbuf (buffer, size); 
     return size;
   }
   else
@@ -235,6 +235,7 @@ void exit (int status)
     thread_current()->parent_info->exit_status = status;
   }
 
+  //printf("Current thread ID: %d\n",thread_current()->tid);
   printf("%s: exit(%d)\n", thread_current()->name, 
     thread_current()->parent_info->exit_status);
 
@@ -260,9 +261,7 @@ pid_t exec (const char *cmd_line)
 int wait (pid_t pid)   
 {
   //printf("In wait()\n");
-  int temp = process_wait(pid);
-  //printf("Exit status is %i\n", temp);
-  return temp;
+  return process_wait(pid);
 }
 
 

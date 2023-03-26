@@ -41,6 +41,8 @@ struct parent_child {
     /* Added in lab 5*/
     tid_t child_tid;         // Needed to find the correct child in process_wait()
     struct semaphore sleep;  // To put parent to sleep when waiting for child
+    bool has_waited;
+    bool load_success;
 };
 
 #endif /* userprog/process.h */

@@ -186,7 +186,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
   //printf("end of thread_create\n");
-  return tid;
+  return tid; 
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -271,7 +271,7 @@ thread_exit (void)
 
   struct thread* curr = thread_current(); 
   //printf("\n(In thread exit) Current thread ID: %d\n\n",thread_current()->tid);
-  //printf("curr->parent_info->alive_count = %i\n", curr->parent_info->alive_count);
+  //printf("exit status = %i\n", curr->parent_info->exit_status);
   //printf("curr->parent_info->alive_count = %p\n", curr->parent_info);
   //printf("thread exit\n");
 
@@ -311,7 +311,7 @@ thread_exit (void)
       lock_acquire(&block);
 
       curr->parent_info->alive_count--;
-      curr->parent_info->exit_status = SUCCESS;
+      //curr->parent_info->exit_status = SUCCESS;
 
       if (curr->parent_info->alive_count == 0)
       {
@@ -333,6 +333,7 @@ thread_exit (void)
       }
     }
   //}
+  //printf("Before proocess_exit\n");
 
   process_exit ();
 #endif
