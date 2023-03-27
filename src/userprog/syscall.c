@@ -267,7 +267,9 @@ int wait (pid_t pid)
 
 /* ------ The following part is for input validation (Lab 5) ------ */
 
-
+/* Checks if the given pointer is valid.
+   The pointer needs to not be in kernel virtual memory and
+   be associated with a page in the page table. */
 bool is_ptr_valid (void* esp)
 {
   if (esp == NULL) return false;
@@ -279,7 +281,7 @@ bool is_ptr_valid (void* esp)
   return true; 
 }
 
-/* Checks if the given string is valid. Every address needs in it needs to be checked for
+/* Checks if the given string is valid. Every address needs to be checked for
    bad pointers using is_ptr_valid(). If every pointer is valid and it reaches '\0',
    it's a valid string. */
 bool is_str_valid (char* str)
@@ -292,6 +294,10 @@ bool is_str_valid (char* str)
   }
 }
 
+/* Checks that the given pointer to a buffer is valid. 
+   This means that every possible pointer in the buffer needs to be valid,
+   so we loop over the buffer with size and check every pointer
+   with is_ptr_valid(). */
 bool is_bufr_valid (void* buffer, unsigned size)
 {
   for (unsigned i = 0; i <= size; i++)
@@ -301,6 +307,10 @@ bool is_bufr_valid (void* buffer, unsigned size)
   return true;
 }
 
+/* Checks that the given file descriptor is valid.
+   The FD can't be 0 or 1 (reserved for are reserved for 
+   the console (stdin/stdout)) or higher than 130, as only 128 files
+   can be open at the same time. */
 bool is_fd_valid (int fd)
 {
   if (fd >= 130) return false;

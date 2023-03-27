@@ -8,10 +8,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-//process_execute (const char *file_name) 
 process_execute (const char *cmd_line) 
-{   /* <<<< This function has been changed for lab 3 >>>> */
-  //printf("in process_execute\n");
+{
   //printf("In process_execute, current thread ID: %d\n",thread_current()->tid);
 
   char *fn_copy;
@@ -50,9 +48,7 @@ process_execute (const char *cmd_line)
   tid = thread_create (cmd_line, PRI_DEFAULT, start_process, status);
 
   /* Make current thread wait while child start executing. */
-  //printf("before sema_down wait\n");
   sema_down(&(curr->wait)); 
-  //printf("sema_down curr->wait\n");
 
   /* Couldn't allocate thread. */  
   if (tid == TID_ERROR) 
@@ -64,17 +60,13 @@ process_execute (const char *cmd_line)
     status->alive_count = 1;  // Parent is still alive
 
     /* Child thread is finished, let parent continue executing. */
-    //printf("before sema_up wait\n");
     sema_up(&(status->parent->wait));
-    //printf("TID ERROR: sema_up status->parent->wait\n");
   }
   status->child_tid = tid;
 
   if ((!status->load_success)) return -1;
 
   //printf("\nend of process exec: Current thread ID: %d\n\n",thread_current()->tid);
-  //printf("end of process execute\n");
-  //printf("returning tid: %i\n", tid);
   return tid;
 }
 
@@ -82,12 +74,11 @@ process_execute (const char *cmd_line)
    running. */
 static void
 start_process (void *aux)
-{     /* <<<< This function has been changed for lab 3 >>>> */
+{ 
   //printf("in start_process\n");
   struct parent_child* status = aux;
 
   char *file_name = status->fn_copy;
-  //printf("in start process file name = %s\n", file_name);
 
   struct intr_frame if_; 
   bool success;
@@ -109,7 +100,6 @@ start_process (void *aux)
   status->exit_status = 0;    // Initial value 
   status->alive_count = 2;    // Initial value, both child and parent are alive
   
-  
   /* If load failed, quit. */
   if (!success) {
     //printf("no success\n");
@@ -119,11 +109,8 @@ start_process (void *aux)
     sema_up(&(status->parent->wait));
     thread_exit ();
   }
-  //printf("After failed load\n");
   /* Not in critical section anymore. Let parent continue executing. */
-  //printf("before sema_up wait\n");
   sema_up(&(status->parent->wait));
-  //printf("sema_up status->parent->wait\n");
 
   thread_current()->parent_info = status;
   //printf("end of start process\n"); 
@@ -144,15 +131,10 @@ start_process (void *aux)
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
    immediately, without waiting.
-
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
+*/
 int
 process_wait (tid_t child_tid) //Return the childs exit status
 {
-  // 1. wait for child and put parent to sleep
-  // 2. don't wait for child and just get the exit_status
-  //printf("process_wait()\n");
   //printf("\n(In process_wait()) Current thread ID: %d\n",thread_current()->tid);
 
   struct thread* curr = thread_current();
@@ -174,24 +156,21 @@ process_wait (tid_t child_tid) //Return the childs exit status
         if (status->alive_count == 1)       // Child has exited
         {
           //printf("\nChild has exited, alive count = 1\n\n");
-          //printf("Child has exited\n");
           return status->exit_status; 
         }
         else if (status->alive_count == 2)  // Child has not exited, wait for it
         { 
           //printf("Child has not exited, will wait\n");
-          //printf("\nbefore sema_down sleep\n\n");
-          sema_down(&(status->sleep));    // Wait until child has exited
-          //printf("sema_down for status->sleep\n");
+          sema_down(&(status->sleep));  // Wait until child has exited
           //printf("\nPArent done sleeping\n\n");
 
           if (status->alive_count == 1) 
           {
-            //printf("\nAlive count == 1\n\n");
+            //printf("\nParent done sleeping and Alive count == 1\n\n");
             return status->exit_status;
           }   
         }
-        else // Something is wrong 
+        else // Something is wrong, should never get here 
         {
           //printf("\nSomething is wrong\n\n");
           status->exit_status = -1;
@@ -199,7 +178,6 @@ process_wait (tid_t child_tid) //Return the childs exit status
         }
       }
   }
-  //printf("out of for\n");
   //printf("\nFound no child with that tid\n\n");
   return -1;
 }
@@ -342,10 +320,8 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
       token = strtok_r (NULL, " ", &save_ptr))
   {
     argv[argc] = token;
-    //printf("argv = %s\n", argv[argc]);
     argc++;
-    //printf("argc = %i\n", argc);
-    //if (argc == MAX_NR_ARGS - 1) break;
+    if (argc == MAX_NR_ARGS - 1) break;
   }
   argv[argc] = NULL;    // Last elem is NULL
 
@@ -354,8 +330,6 @@ load (const char *cmd_line, void (**eip) (void), void **esp)
   file_name = argv[0]; 
 
   strlcpy (t->name, file_name, sizeof t->name);
-
-  //printf("t->name = %s\n", t->name);
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -644,29 +618,10 @@ setup_stack (void **esp, int argc, char* argv[])
         void** arg_ptrs[argc];    // To save pointers to arguments
         char* curr_arg;           // To easier handle the current argument
 
-        /* Push null to the stack as the first char. */
-        //s_ptr--;  // Move address one step up the stack
-        //s_ptr -= ((int)s_ptr % 4) + 4;
-        //*((char*)s_ptr) = (char)NULL;    // Push char to stack
-        //curr_arg = argv[argc];
-        //(void*)s_ptr = *curr_arg;    // Push char to stack
-        //s_ptr--;  // Move address one step up the stack
-        //s_ptr -= sizeof(char*);
-        //memcpy(s_ptr, &(arg_ptrs[argc]), sizeof(char*)); 
-
-        //curr_arg = argv[argc];
-        //s_ptr -= sizeof(NULL);  // Move address one step up the stack
-        //*((char*)s_ptr) = curr_arg;    // Push char to stack
-        //memcpy(s_ptr, NULL, sizeof(NULL));
-
         /* Push arguments to stack in reverse order. 
            From testing in lab 5, need to add null somewhere. */ 
         for (int c = argc-1; c >= 0; c--)
         { 
-          //s_ptr--;
-          //*curr_arg = '\0';
-          //*((char*)s_ptr) = *curr_arg; //Testing to add null to pass tests
-
           int size = strlen(argv[c]);
           curr_arg = argv[c];
           char *next_arg = curr_arg - 1;
@@ -675,41 +630,31 @@ setup_stack (void **esp, int argc, char* argv[])
           {
             s_ptr--;  // Move address one step up the stack
             *((char*)s_ptr) = *curr_arg;    // Push char to stack
-            //s_ptr--;  // Move address one step up the stack
-            //*((char*)s_ptr) = 'a';    // Push char to stack
-            
-            //memcpy(s_ptr, *curr_arg, sizeof(char) + 1);
           }
-          
-
           arg_ptrs[c] = s_ptr;  // Save the address to the first char in every arg
         }
 
         /* Align the stack pointer to a multiple of 4 bytes */ 
         s_ptr -= ((int)s_ptr % 4) + 4;  // Make sure there is atleast 4 addresses between
 
-        /* Make sure that argv[argc] is null on the stack. */
+        /* Push argv[argc] (NULL) to the stack. */
         s_ptr -= sizeof(char*);
-        *((char**)s_ptr) = (char*)NULL;
+        *((char**)s_ptr) = (char*)(argv[argc]);
+        //memcpy((char*)s_ptr, ((char*)(arg_ptrs[argc])), sizeof(char*));
 
-        /* Push the address of each string plus a null pointer sentinel, on the stack, 
-          in right-to-left order. */
+        /* Push the address of each string on the stack, in right-to-left order. */
         char** arg_adrs;
         for (int c = argc-1; c >= 0; c--)
         {
           s_ptr -= sizeof(char*);
           memcpy(s_ptr, &(arg_ptrs[c]), sizeof(char*));
           //printf("%p\n", (char*)s_ptr);
-
           /* After argv[0], push argv (the address of argv[0]) on the stack. */
           if (c == 0)
           {
             arg_adrs = s_ptr;
-            //s_ptr -= sizeof(char**);
-            //printf("all args size = %i\n", ((argc * 2) * 4));
             s_ptr -= ((argc * 2) * 4);
             memcpy(s_ptr, &arg_adrs, sizeof(char**));
-            //*((char**) s_ptr) = (char **)(s_ptr + sizeof(char**));
           }
         }
 
@@ -720,11 +665,7 @@ setup_stack (void **esp, int argc, char* argv[])
         /* Push a fake "return address" on the stack. */
         void* fake;
         s_ptr -= sizeof(void*);
-        *((void**)s_ptr) = (void*)NULL;
-        //memcpy(s_ptr, &fake, sizeof(void*));
-
-        /* Align the stack pointer to a multiple of 4 bytes. */ 
-        //s_ptr -= (int)s_ptr % 4;
+        memcpy(s_ptr, &fake, sizeof(void*));
 
         /* Assign the stack pointer to esp. */
         *esp = s_ptr;

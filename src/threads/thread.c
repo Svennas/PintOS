@@ -271,9 +271,6 @@ thread_exit (void)
 
   struct thread* curr = thread_current(); 
   //printf("\n(In thread exit) Current thread ID: %d\n\n",thread_current()->tid);
-  //printf("exit status = %i\n", curr->parent_info->exit_status);
-  //printf("curr->parent_info->alive_count = %p\n", curr->parent_info);
-  //printf("thread exit\n");
 
   struct lock block;
   lock_init(&block);
@@ -300,14 +297,11 @@ thread_exit (void)
       }
       //else printf("Child is still alive\n");
     }
-    //printf("\nTID 3 parent: %i\n\n", curr->parent_info->parent->tid);
   }
 
     /* Thread with no children. */
-  //if (list_empty(&curr->children)) 
-  //{ 
-    if (curr->parent_info != NULL)   // Check that it's not init thread with no child
-    {
+    if (curr->parent_info != NULL)   
+    {   // Check that it's not init thread with no child
       lock_acquire(&block);
 
       curr->parent_info->alive_count--;
@@ -325,20 +319,12 @@ thread_exit (void)
         //printf("Parent is still alive\n");
 
         /* Wake up parent in process_wait if it exists. */
-        //printf("\nbefore sema_up sleep\n\n");
         sema_up(&(curr->parent_info->sleep)); 
-        
-        
-        //printf("sema_up curr->parent_info->sleep\n");
       }
     }
-  //}
-  //printf("Before proocess_exit\n");
 
   process_exit ();
 #endif
-  //printf("After process_exit\n");
-  //if (list_empty (&ready_list)) printf("Ready list is empty\n");
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
