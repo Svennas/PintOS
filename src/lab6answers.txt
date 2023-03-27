@@ -1,0 +1,184 @@
+Answers to questions in lab 6:
+
+• One may synchronize access to files by locking the whole file while reading/writing. 
+  Think about why it is not a good idea.
+
+    If you look the file itself the first thing is that you can't access the file 
+    or anything it contains. The biggest problem with no synch for file access is that 
+    multiple threads/processes can change in the file at the same time which can result
+    in a race condition. 
+    But you can not prevent this by just locking the file. This just destroyes the 
+    purpose of it. You should still be able to read from it. 
+
+
+• What is the readers/writers problem? Which modifications of readers-writers 
+  synchronization algorithm exist? Find pseudo code for the algorithm that prioritizes 
+  readers.
+
+    It's a problem with concurrency where threads can not read/write from a file that is 
+    being written to from another thread. In particular we do not want more than one thread
+    modifying a file at at time. We may allow more threads to read from the file, is this
+    don't involve any modifying.
+    Modifications: 
+    1. The first problem is that no reader should wait for other readers to finish simply 
+    because a writer is waiting.
+    2. The second problem is that if a writer is waiting to access the object, no new readers 
+    may start reading.
+    3. The third is that no thread should starve. Multiple processes are permitted to 
+    concurrently acquire a reader–writer lock in read mode, but only one process may acquire 
+    the lock for writing, as exclusive access is required for writers.
+    
+    Psuedo code (from wikipedia):
+
+      semaphore resource=1;
+      semaphore rmutex=1;
+      readcount=0;
+
+      //resource.P() is equivalent to wait(resource)
+      //resource.V() is equivalent to signal(resource)
+      //rmutex.P() is equivalent to wait(rmutex)
+      //rmutex.V() is equivalent to signal(rmutex)
+
+      writer() {
+        resource.P();         //Lock the shared file for a writer
+
+        <CRITICAL Section>
+        // Writing is done
+
+        <EXIT Section>
+        resource.V();         //Release the shared file for use by other readers. 
+                              //Writers are allowed if there are no readers requesting it.
+      }
+
+      reader() {
+        rmutex.P();           //Ensure that no other reader can execute the <Entry> section while you are in it
+        <CRITICAL Section>
+        readcount++;          //Indicate that you are a reader trying to enter the Critical Section
+        if (readcount == 1)   //Checks if you are the first reader trying to enter CS
+          resource.P();     //If you are the first reader, lock the resource from writers. Resource stays reserved for subsequent readers
+        <EXIT CRITICAL Section>
+        rmutex.V();           //Release
+
+        // Do the Reading
+
+        rmutex.P();           //Ensure that no other reader can execute the <Exit> section while you are in it
+        <CRITICAL Section>
+        readcount--;          //Indicate that you no longer need the shared resource. One fewer reader
+        if (readcount == 0)   //Checks if you are the last (only) reader who is reading the shared file
+          resource.V();     //If you are last reader, then you can unlock the resource. This makes it available to writers.
+        <EXIT CRITICAL Section>
+        rmutex.V();           //Release
+      }
+
+
+• Think of a scenario where the concurrent access to a file system 
+with no synchronization causes a problem such as inconsistency or 
+corruption of the file system.
+
+  Two different threads tries to write to a file at the same time.
+  This leads to a corrupted file that probably can't be read from
+  later or the system crashes(????) (dont judge, me tired ).
+
+
+• What is the difference between the inode and the file object?
+
+  Inode:
+  An inode represents the layout of a file's data on disk. 
+  Each inode is stored in one disk sector, limiting the number of
+  block pointers that it can contain, supporting up to 8 MB files.
+  An inode represents an individual file. When you write/read data 
+  to/from an inode you modify the actual physical file (shared).
+  File object:
+  A file reads and writes to disk sector reads and writes. 
+  A file object contains an inode and things like seek position. 
+  Every process has its own object (not shared).
+
+
+• Consider the following set of actions, which are provided in the
+following chronological order. What will student.txt contain?
+  Process A: create(student.txt, 1000)
+  Process A: fd = open(student.txt)
+  Process B: remove(student.txt)
+  Process C: create(student.txt, 1000)
+  Process C: fd = open(student.txt)
+  Process C: write(fd, ”AAA”, 3)
+  Process A: write(fd, ”BBB”, 3)
+  Process A: close(fd)
+  Process C: close(fd)
+
+    The file will probably contain "AAABBB".
+    The file is removed and then created again, which I don't think
+    willl pose a problem in itself, but getting the fd with open()
+    the second will probably be problematic. This might lead to 
+    A not being able to write anything to the file and then getting
+    some kind of error when trying to close the fd. 
+
+
+• What is the difference between file open and filesys open?
+    file_open tries to open a file for a given inode.
+    filesys_open tries to open a file with a given name via 
+    file_open, and only does if it exists in a directory.
+
+
+• Which functions from inode.c are called when you call 
+filesys_remove, filesys_open, file_close, file_read, and file_write?
+    - sys_remove:   inode_open 
+                    inode_remove
+                    inode_close
+                    inode_write_at 
+                    inode_read_at
+
+    - sys_open:     inode_open 
+                    inode_read_at
+                    inode_close
+
+    - close         
+                    inode_close
+                    inode_allow_write
+
+    - read
+                    inode_allow_write
+
+    - write
+                    inode_write_at
+
+
+• When you remove the file, what is removed first, the file name from 
+the directory or the file content from the disk? How and when is the 
+file content removed?
+    - Removed first:
+        The file name in the directory is removed first and then the
+        inode via dir_close and inode_close.
+    - How and when?
+        When open_cnt is 0, remove inode from list, free map, and 
+        then free the inode struct.
+
+
+• What happens if you attempt to remove an open file?
+    Don't know yet :/
+
+
+• How can you keep track of the position in a file?
+    With the function file_tell(), which returns the pos defined in
+    the struct for the file (top of file.c). 
+
+
+• Can you open a file, on which filesys_remove has been called?
+    filesys_remove first calls on dir_remove, which firsts erases 
+    the directory entry and then calls on inode_remove, which in 
+    turn marks the inode to be removed when called on inode_close.
+    filesys_remove then calls on dir_close, which calls on 
+    inode_close and frees the directory entry. inode_close removes
+    the inode an frees it.
+    file_open opens a file for the given INODE, which then will not
+    be possible.
+
+
+• Find where free map allocate and free map release are used in inode.c.
+• There are few levels where you can add your implementation of the readers-
+writers problem: system calls, files, and inodes. Think about advantages
+and disadvantages of each approach. Which level is the most appropriate?
+Motivate your answer.
+• Find the places in the code, where the disk is accessed outside
+read/write/open/close/create/remove system calls. Reconsider
+your motivation for the previous question.

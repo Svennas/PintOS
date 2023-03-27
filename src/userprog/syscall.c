@@ -224,6 +224,42 @@ int write (int fd, const void *buffer, unsigned size)
   }
 }
 
+/* Sets the current position in the open file fd to position. If the 
+position exceeds the file size, it should be set to the end of file.*/
+void seek (int fd, unsigned position)
+{
+  struct thread *t = thread_current();
+  struct file *f = t->fd_list[fd];
+
+  file_seek(f, position);
+}
+
+/* Returns the current position in the open file fd. */
+unsigned tell (int fd)
+{
+  struct thread *t = thread_current();
+  struct file *f = t->fd_list[fd];
+
+  return file_tell(f);
+}
+
+/* Returns the file size of the open file fd. */
+int filesize (int fd)
+{
+  struct thread *t = thread_current();
+  struct file *f = t->fd_list[fd];
+
+  return file_length(f);
+}
+
+/* Removes the file with the name file name. Returns true if 
+successful, false otherwise. */
+bool remove (const char *file name)
+{
+  return filesys_remove(name);
+}
+
+
 /* Closes all the files related to the thread, the uses thread_exit() from 
 threads/thread.h to deschedule the current thread and destroy it. 
 */
@@ -319,79 +355,3 @@ bool is_fd_valid (int fd)
 
   return true;
 }
-
-/*
-Answers to questions in lab 6:
-
-- One may synchronize access to files by locking the whole file while reading/writing. 
-  Think about why it is not a good idea.
-
-    If you look the file itself the first thing is that you can't access the file 
-    or anything it contains. The biggest problem with no synch for file access is that 
-    multiple threads/processes can change in the file at the same time which can result
-    in a race condition. 
-    But you can not prevent this by just locking the file. This just destroyes the 
-    purpose of it. You should still be able to read from it. 
-
-
-- What is the readers/writers problem? Which modifications of readers-writers 
-  synchronization algorithm exist? Find pseudo code for the algorithm that prioritizes 
-  readers.
-
-  It's a problem with concurrency where threads can not read/write from a file that is 
-  being written to from another thread. In particular we do not want more than one thread
-  modifying a file at at time. We may allow more threads to read from the file, is this
-  don't involve any modifying.
-  Modifications: 
-  1. The first problem is that no reader should wait for other readers to finish simply 
-  because a writer is waiting.
-  2. The second problem is that if a writer is waiting to access the object, no new readers 
-  may start reading.
-  3. The third is that no thread should starve. Multiple processes are permitted to 
-  concurrently acquire a reader–writer lock in read mode, but only one process may acquire 
-  the lock for writing, as exclusive access is required for writers.
-  
-  Psuedo code (from wikipedia):
-
-    semaphore resource=1;
-    semaphore rmutex=1;
-    readcount=0;
-
-    //resource.P() is equivalent to wait(resource)
-    //resource.V() is equivalent to signal(resource)
-    //rmutex.P() is equivalent to wait(rmutex)
-    //rmutex.V() is equivalent to signal(rmutex)
-
-    writer() {
-      resource.P();         //Lock the shared file for a writer
-
-      <CRITICAL Section>
-      // Writing is done
-
-      <EXIT Section>
-      resource.V();         //Release the shared file for use by other readers. 
-                            //Writers are allowed if there are no readers requesting it.
-}
-
-reader() {
-    rmutex.P();           //Ensure that no other reader can execute the <Entry> section while you are in it
-    <CRITICAL Section>
-    readcount++;          //Indicate that you are a reader trying to enter the Critical Section
-    if (readcount == 1)   //Checks if you are the first reader trying to enter CS
-        resource.P();     //If you are the first reader, lock the resource from writers. Resource stays reserved for subsequent readers
-    <EXIT CRITICAL Section>
-    rmutex.V();           //Release
-
-    // Do the Reading
-
-    rmutex.P();           //Ensure that no other reader can execute the <Exit> section while you are in it
-    <CRITICAL Section>
-    readcount--;          //Indicate that you no longer need the shared resource. One fewer reader
-    if (readcount == 0)   //Checks if you are the last (only) reader who is reading the shared file
-        resource.V();     //If you are last reader, then you can unlock the resource. This makes it available to writers.
-    <EXIT CRITICAL Section>
-    rmutex.V();           //Release
-}
-
-
-*/
