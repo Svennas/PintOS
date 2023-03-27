@@ -314,7 +314,7 @@ bool is_bufr_valid (void* buffer, unsigned size)
 bool is_fd_valid (int fd)
 {
   if (fd >= 130) return false;
-
+ 
   if (fd < 1) return false;
 
   return true;

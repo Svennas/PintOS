@@ -653,7 +653,7 @@ setup_stack (void **esp, int argc, char* argv[])
           if (c == 0)
           {
             arg_adrs = s_ptr;
-            s_ptr -= ((argc * 2) * 4);
+            s_ptr -= ((argc * 2) * 4);  // Move stack pointer as shown in Lesson 2 pdf
             memcpy(s_ptr, &arg_adrs, sizeof(char**));
           }
         }
