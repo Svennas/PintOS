@@ -29,7 +29,6 @@ void close (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 
-
 /* Lab 3 (Started again 2023)*/
 void exit (int status);
 pid_t exec (const char *cmd_line);
@@ -41,6 +40,12 @@ pid_t exec (const char *cmd_line);
 bool is_ptr_valid (void* esp);
 bool is_str_valid (char* str);
 bool is_bufr_valid (void* buffer, unsigned size);
-bool is_fd_valid (int fd);
+bool is_fd_valid (int fd);  
+
+/* Lab 6 */
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
+int filesize (int fd);
+bool remove (const char *file_name);
 
 #endif /* userprog/syscall.h */

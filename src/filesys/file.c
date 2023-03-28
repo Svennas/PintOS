@@ -9,6 +9,12 @@ struct file
     struct inode *inode;        /* File's inode. */
     off_t pos;                  /* Current position. */
     bool deny_write;            /* Has file_deny_write() been called? */
+
+    /* Added in lab 6 */
+    int readers_count;          /* Keep check of the amount current readers. */
+    struct lock access;    /* Controll access to file. */
+    struct lock readers;        /* Controll changes to readers_count. */
+    struct semaphore queue;     /* Keep check of who is next. FIFO.*/
   };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -23,6 +29,12 @@ file_open (struct inode *inode)
       file->inode = inode;
       file->pos = 0;
       file->deny_write = false;
+
+      file->readers_count = 0;
+      lock_init(&(file->access));
+      lock_init(&(file->readers));
+      sema_init(&(file->queue), 0);
+
       return file;
     }
   else
@@ -68,8 +80,42 @@ file_get_inode (struct file *file)
 off_t
 file_read (struct file *file, void *buffer, off_t size) 
 {
-  off_t bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
-  file->pos += bytes_read;
+  printf("In file_read\n");
+  // ---- Entry section ---- //
+  off_t bytes_read;
+
+  sema_down(&(file->queue));        // Add this read request to the queue
+
+  lock_acquire(&(file->readers));   // Protect readers count
+  file->readers_count++;
+
+  if (file->readers_count == 1)
+  {
+    // Now check if the file is being written to or not
+    if (lock_try_acquire(&(file->access)))
+    {
+      lock_acquire(&(file->access));  // Take access of the file
+      sema_up(&(file->queue));        // Let next in queue read
+
+      lock_release(&(file->readers)); 
+
+      // ---- Critical section ---- //
+      printf("Crit\n");
+      bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
+      file->pos += bytes_read;
+    }
+  }
+
+  // ---- Exit section ---- //
+  printf("Exit\n");
+  lock_acquire(&(file->readers));   // Protect readers count
+  file->readers_count--;
+  if (file->readers_count == 0)
+  {
+    lock_release(&(file->access));  // Release access to file. Can know write or read again.
+  }
+  lock_release(&(file->readers));
+
   return bytes_read;
 }
 
@@ -94,8 +140,27 @@ file_read_at (struct file *file, void *buffer, off_t size, off_t file_ofs)
 off_t
 file_write (struct file *file, const void *buffer, off_t size) 
 {
-  off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
-  file->pos += bytes_written;
+  printf("file write\n");
+  // ---- Entry section ---- //
+  off_t bytes_written;
+
+  sema_down(&(file->queue));        // Add this write request to the queue
+
+  if (lock_try_acquire(&(file->access)))
+  {
+    lock_acquire(&(file->access));
+    sema_up(&(file->queue));
+
+    // ---- Critical section ---- //
+    printf("Crit\n");
+    bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
+    file->pos += bytes_written;
+  }
+
+  // ---- Exit section ---- //
+  printf("Exit\n");
+  lock_release(&(file->access));
+
   return bytes_written;
 }
 

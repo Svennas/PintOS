@@ -175,10 +175,27 @@ file content removed?
 
 
 • Find where free map allocate and free map release are used in inode.c.
+  - free_map_allocate can be found in inode_create, where a new inode is 
+    initialized and written to a sector in the file system disk.
+  - free_map_release can be found in inode_close, where an inode can be 
+  released if it is the last reference to it. The function frees the 
+  inodes block on the disk. 
+
+
 • There are few levels where you can add your implementation of the readers-
 writers problem: system calls, files, and inodes. Think about advantages
 and disadvantages of each approach. Which level is the most appropriate?
 Motivate your answer.
+
+  - system calls: To surface level
+
+  - files: Probably the correct level
+
+  - inodes: To deep probably
+
+
 • Find the places in the code, where the disk is accessed outside
 read/write/open/close/create/remove system calls. Reconsider
 your motivation for the previous question.
+
+  

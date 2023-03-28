@@ -180,6 +180,13 @@ void close (int fd)
 descriptor into the given buffer. Uses file_read() from filesys/file.h.
 If fd is 0, reads from console using input_getc() from devices/input.h.
 Returns -1 if the file is NULL. Returns the files size if successful.*/
+
+/* Reads size bytes from the file with identifier fd into buffer. Returns the number
+of bytes actually read (0 at end of file), or -1 if the file could not be read (due
+to a condition other than end of file). Fd 0 reads from the keyboard. Several
+readers should be able to read from a file at the same time. However, reading
+should be forbidden if the file content is being changed by the writer.
+*/
 int read (int fd, void *buffer, unsigned size)
 {
   //printf("fd = %i\n", fd);
@@ -191,13 +198,14 @@ int read (int fd, void *buffer, unsigned size)
     for (unsigned int i = 0; i < size; i++)
     {
       *((uint8_t*)buffer + i) = input_getc ();
-      putbuf (buffer + i, 1); /* So keypress is shown in console. */
+      putbuf (buffer + i, 1); // So keypress is shown in console.
     }
     return size;
   }
   else
   {
     if (f == NULL) return -1;
+    
     return file_read (f, buffer, size);
   }
 }
@@ -254,9 +262,9 @@ int filesize (int fd)
 
 /* Removes the file with the name file name. Returns true if 
 successful, false otherwise. */
-bool remove (const char *file name)
+bool remove (const char *file_name)
 {
-  return filesys_remove(name);
+  return filesys_remove(file_name);
 }
 
 
