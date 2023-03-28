@@ -35,7 +35,7 @@ syscall_handler (struct intr_frame *f)
   else if (syscall_nr == SYS_CREATE) 
   {
     //printf("SYS_CREATE\n");
-    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_1))) exit(-1);
+    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_2))) exit(-1);
 
     char *create_arg_1 = *((char**)ARG_1);
     if (!(is_str_valid(create_arg_1))) exit(-1);
@@ -69,8 +69,8 @@ syscall_handler (struct intr_frame *f)
   else if (syscall_nr == SYS_READ) 
   {
     //printf("SYS_READ\n");
-    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_1)) 
-    || !(is_ptr_valid(ARG_1))) exit(-1);
+    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_2)) 
+    || !(is_ptr_valid(ARG_3))) exit(-1);
 
     int read_arg_1 = *((int*)ARG_1);
     if (!(is_fd_valid(read_arg_1))) exit(-1);
@@ -85,8 +85,8 @@ syscall_handler (struct intr_frame *f)
   else if (syscall_nr == SYS_WRITE) 
   {
     //printf("SYS_WRITE\n");
-    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_1)) 
-    || !(is_ptr_valid(ARG_1))) exit(-1);
+    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_2)) 
+    || !(is_ptr_valid(ARG_3))) exit(-1);
 
     int write_arg_1 = *((int*)ARG_1);
     if (!(is_fd_valid(write_arg_1))) exit(-1);
@@ -96,6 +96,52 @@ syscall_handler (struct intr_frame *f)
     if (!(is_bufr_valid(write_arg_2, write_arg_3))) exit(-1);
 
     f->eax = write (write_arg_1, write_arg_2, write_arg_3);
+  }
+
+  else if (syscall_nr == SYS_SEEK)
+  {
+    //printf("SYS_SEEK\n");
+    if (!(is_ptr_valid(ARG_1)) || !(is_ptr_valid(ARG_2))) exit(-1);
+
+    int _arg_1 = *((int*)ARG_1);
+    if (!(is_fd_valid(_arg_1))) exit(-1);
+
+    unsigned _arg_2 = *((unsigned*)ARG_2); 
+
+    seek (_arg_1, _arg_2);
+  }
+  
+  else if (syscall_nr == SYS_TELL)
+  {
+    //printf("SYS_TELL\n");
+    if (!(is_ptr_valid(ARG_1))) exit(-1);
+
+    int _arg_1 = *((int*)ARG_1);
+    if (!(is_fd_valid(_arg_1))) exit(-1);
+
+    f->eax = tell (_arg_1);
+  }
+
+  else if (syscall_nr == SYS_FILESIZE)
+  {
+    //printf("SYS_FILESIZE\n");
+    if (!(is_ptr_valid(ARG_1))) exit(-1);
+
+    int _arg_1 = *((int*)ARG_1);
+    if (!(is_fd_valid(_arg_1))) exit(-1);
+
+    f->eax = filesize (_arg_1);
+  }
+
+  else if (syscall_nr == SYS_REMOVE)
+  {
+    //printf("SYS_REMOVE\n");
+    if (!(is_ptr_valid(ARG_1))) exit(-1);
+
+    char *_arg_1 = *((char**)ARG_1);
+    if (!(is_str_valid(_arg_1))) exit(-1);
+
+    f->eax = remove (_arg_1);
   }
 
   else if (syscall_nr == SYS_EXIT) 
