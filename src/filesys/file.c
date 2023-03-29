@@ -16,7 +16,8 @@ struct file
 
     struct lock readers;        /* Controll changes to readers_count. */
     struct semaphore queue;     /* Keep check of who is next. FIFO.*/
-    bool occupied;              /* If the file is taken by write or read. */
+    bool is_writing;            /* True if the file is being used by write. */
+    bool is_reading;            /* True if the file is being used by read. */
 
     struct thread* prio_queue[];
   };
@@ -39,7 +40,8 @@ file_open (struct inode *inode)
       lock_init(&(file->readers));
       sema_init(&(file->queue), 0);
       list_init(file->prio_queue);
-      file->occupied = false;
+      file->is_writing = false;
+      file->is_reading = false;
 
       return file;
     }
@@ -89,10 +91,6 @@ file_read (struct file *file, void *buffer, off_t size)
   //printf("In file_read\n");
   // ---- Entry section ---- //
   off_t bytes_read;
-  //printf("read: sema_down(&(file->queue));\n");
-  //sema_down(&(file->queue));        // Add this read request to the queue
-  //printf("read: add to queue\n");
-  //list_push_back(file->prio_queue, thread_current()->elem);
 
   //printf("read: before lock_acquire(&(file->readers))\n");
   lock_acquire(&(file->readers));   // Protect readers count
@@ -100,56 +98,47 @@ file_read (struct file *file, void *buffer, off_t size)
   file->readers_count++;  
   //printf("read: lock_release(&(file->readers)); \n");
   lock_release(&(file->readers)); 
-
-  if (file->readers_count == 1)
+  if (file->readers_count == 1) // If this is the first reader
   {
-    //printf("read: sema file->access value = %i\n", file->access.value);
-    // Now check if the file is being written to or not
-    // Try to down sema. Will be true if the file is not in use
-    //if (sema_try_down(&(file->access)))   
-    //if (file->access.value == 1)
-    if (!file->occupied)
+    if (!file->is_writing)  // Request access to file
     {
-      //printf("read: before sema_up\n");
-      sema_up(&(file->queue));    // Let the thread with highest prio run
-      //printf("read: after sema_up\n");
-      file->occupied = true;      // So no other thread can run this file
-
-      // ---- Critical section ---- //
-      //sema_down(&(file->access));
-      //printf("read: Crit\n");
-      bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
-      file->pos += bytes_read;
-
-      //printf("read: sema file->access value = %i\n", file->access.value);
-      //printf("read: lock_acquire(&(file->access));\n");
-      //lock_acquire(&(file->access));  // Take access of the file
-      //printf("read: sema_up(&(file->queue));\n");
-      //sema_up(&(file->queue));        // Let next in queue read
-      //printf("read: sema_down(&(file->queue));\n");
-      //sema_down(&(file->queue));  // Sleep the current thread
-      //list_pop_front(file->prio_queue);   // Pop thread with highest prio
-      //printf("read: sema_up(&(file->queue));\n");
-      //sema_up(&(file->queue));    // Let the thread with highest prio run
-
-    }
-    else  // If the file is occupied, put current thread to sleep
-    {
-      //printf("read: the file is occupied\n");
-      sema_down(&(file->queue));  // Sleep the current thread
+      file->is_reading = true;      // So no write can't use this file
     }
   }
+
+  // If file_write is running, put this thread to sleep and put it in the queue
+  if (file->is_writing)
+  {
+    // If write is running, thread gets stuck here until it's done.
+    // Write call sema_up when it's done????
+    sema_down(&(file->queue));
+  }
+  // file_write is not running, let the next thread run (read or write)
+  //else 
+  //{
+    sema_up(&(file->queue)); // This can be both read and write
+    // If write, go to file_write. file_read is stuck here
+    // As soon as write is done, is_writing will be false
+
+    /* If the next file is read, just continue. */
+  //}
+  
+  // ---- Critical section ---- //
+  //printf("read: Crit\n");
+  bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
+  file->pos += bytes_read;
 
   // ---- Exit section ---- //
   //printf("read: Exit\n");
   lock_acquire(&(file->readers));   // Protect readers count
   //printf("read: readers count: %i\n", file->readers_count);
   file->readers_count--;
+  /* As soon as the counter reaches 0, give up access to the file to let write run. */
   if (file->readers_count == 0)
   {
-    //sema_up(&(file->access));  // Release access to file. Can know write or read again.
     //printf("read: Release access to file.\n");
-    file->occupied = false;
+    file->is_reading = false;
+    sema_up(&(file->queue));
   }
   lock_release(&(file->readers));
 
@@ -178,52 +167,30 @@ off_t
 file_write (struct file *file, const void *buffer, off_t size) 
 {
   //printf("file write\n");
-  //printf("write: readers count: %i\n", file->readers_count);
   // ---- Entry section ---- //
   off_t bytes_written;
-  //printf("write: sema_down(&(file->queue));\n");
-  //sema_down(&(file->queue));        // Add this write request to the queue
+  if (!file->is_reading && !file->is_writing)
+  { // Request access <----
+    file->is_writing = true;
 
-  //printf("write: add to queue\n");
-  //list_push_back(file->prio_queue, thread_current()->elem);
-
-  //printf("write: sema file->access value = %i\n", file->access.value);
-  //if (file->access.value == 1)
-  if (!file->occupied)
-  {
     //printf("write: before sema_up\n");
     sema_up(&(file->queue));    // Let the thread with highest prio run
-    //printf("write: after sema_up\n");
-    file->occupied = true;      // So no other thread can run0xc010724a 0xc010c83f 0xc01002cc 0xc0100728 this file
-
-    // ---- Critical section ---- //
-    //sema_down(&(file->access));
-    //printf("write: Crit\n");
-    bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
-    file->pos += bytes_written;
-
-    //printf("sema file->access value = %i\n", file->access.value);
-    //printf("write: lock_acquire(&(file->access));\n");
-    //lock_acquire(&(file->access));
-    //printf("write: sema_up(&(file->queue));\n");
-    //sema_up(&(file->queue));
-
-    //printf("write: sema_down(&(file->queue));\n");
-    //sema_down(&(file->queue));  // Sleep the current thread
-    //list_pop_front(file->prio_queue);   // Pop thread with highest prio
-    //printf("write: sema_up(&(file->queue));\n");
-    //sema_up(&(file->queue));    // Let the thread with highest prio run
-
   }
   else
   {
     //printf("write: the file is occupied\n");
-    sema_down(&(file->queue));
+    sema_down(&(file->queue));  // Add this thread to the queue
   }
+
+   // ---- Critical section ---- //
+  //sema_down(&(file->access));
+  //printf("write: Crit\n");
+  bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
+  file->pos += bytes_written;
 
   // ---- Exit section ---- //
   //printf("write: Release access to file.\n");
-  file->occupied = false;
+  file->is_writing = false;
   //printf("write: Exit\n");
   //sema_up(&(file->access));
 
