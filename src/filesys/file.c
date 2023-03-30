@@ -12,14 +12,16 @@ struct file
 
     /* Added in lab 6 */
     int readers_count;          /* Keep check of the amount current readers. */
-    struct semaphore access;         /* Controll access to file. */
+    //struct semaphore access;         /* Controll access to file. */
+    struct lock rw_mutex;
+    //struct semaphore mutex;
 
     struct lock readers;        /* Controll changes to readers_count. */
-    struct semaphore queue;     /* Keep check of who is next. FIFO.*/
-    bool is_writing;            /* True if the file is being used by write. */
-    bool is_reading;            /* True if the file is being used by read. */
+    //struct semaphore queue;     /* Keep check of who is next. FIFO.*/
+    //bool is_writing;            /* True if the file is being used by write. */
+    //bool is_reading;            /* True if the file is being used by read. */
 
-    struct thread* prio_queue[];
+    //struct thread* prio_queue[];
   };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -36,12 +38,14 @@ file_open (struct inode *inode)
       file->deny_write = false;
 
       file->readers_count = 0;
-      sema_init(&(file->access), 1);    // Binary sema
+      //sema_init(&(file->access), 1);    // Binary sema
       lock_init(&(file->readers));
-      sema_init(&(file->queue), 0);
-      list_init(file->prio_queue);
-      file->is_writing = false;
-      file->is_reading = false;
+      //sema_init(&(file->queue), 0);
+      lock_init(&(file->rw_mutex));
+      //sema_init(&(file->mutex), 0);
+      //list_init(file->prio_queue);
+      //file->is_writing = false;
+      //file->is_reading = false;
 
       return file;
     }
@@ -96,27 +100,30 @@ file_read (struct file *file, void *buffer, off_t size)
   lock_acquire(&(file->readers));   // Protect readers count
   //printf("readers count: %i\n", file->readers_count);
   file->readers_count++;  
-  //printf("read: lock_release(&(file->readers)); \n");
-  lock_release(&(file->readers)); 
+   
   if (file->readers_count == 1) // If this is the first reader
   {
-    if (!file->is_writing)  // Request access to file
-    {
-      file->is_reading = true;      // So no write can't use this file
-    }
+    //sema_down(&(file->access));
+    lock_acquire(&(file->rw_mutex));
+    //if (!file->is_writing)  // Request access to file
+    //{
+      //file->is_reading = true;      // So no write can't use this file
+    //}
   }
+  //printf("read: lock_release(&(file->readers)); \n");
+  lock_release(&(file->readers));
 
   // If file_write is running, put this thread to sleep and put it in the queue
-  if (file->is_writing)
-  {
+  //if (file->is_writing)
+  
     // If write is running, thread gets stuck here until it's done.
     // Write call sema_up when it's done????
-    sema_down(&(file->queue));
-  }
+    //sema_down(&(file->queue));
+  //}
   // file_write is not running, let the next thread run (read or write)
   //else 
   //{
-    sema_up(&(file->queue)); // This can be both read and write
+    //sema_up(&(file->queue)); // This can be both read and write
     // If write, go to file_write. file_read is stuck here
     // As soon as write is done, is_writing will be false
 
@@ -137,8 +144,10 @@ file_read (struct file *file, void *buffer, off_t size)
   if (file->readers_count == 0)
   {
     //printf("read: Release access to file.\n");
-    file->is_reading = false;
-    sema_up(&(file->queue));
+    //file->is_reading = false;
+    //sema_up(&(file->queue));
+    //sema_up(&(file->access));
+    lock_release(&(file->rw_mutex));
   }
   lock_release(&(file->readers));
 
@@ -168,31 +177,37 @@ file_write (struct file *file, const void *buffer, off_t size)
 {
   //printf("file write\n");
   // ---- Entry section ---- //
-  off_t bytes_written;
-  if (!file->is_reading && !file->is_writing)
-  { // Request access <----
-    file->is_writing = true;
+  //off_t bytes_written;
+  //sema_down(&(file->access));
+
+  lock_acquire(&(file->rw_mutex));
+
+  //if (!file->is_reading && !file->is_writing)
+  //{ // Request access <----
+    //file->is_writing = true;
 
     //printf("write: before sema_up\n");
-    sema_up(&(file->queue));    // Let the thread with highest prio run
-  }
-  else
-  {
+    //sema_up(&(file->queue));    // Let the thread with highest prio run
+  //}
+  //else
+  //{
     //printf("write: the file is occupied\n");
-    sema_down(&(file->queue));  // Add this thread to the queue
-  }
+    //sema_down(&(file->queue));  // Add this thread to the queue
+  //}
 
    // ---- Critical section ---- //
   //sema_down(&(file->access));
   //printf("write: Crit\n");
-  bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
+  off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
   file->pos += bytes_written;
 
   // ---- Exit section ---- //
   //printf("write: Release access to file.\n");
-  file->is_writing = false;
+  //file->is_writing = false;
   //printf("write: Exit\n");
   //sema_up(&(file->access));
+
+  lock_release(&(file->rw_mutex));
 
   return bytes_written;
 }

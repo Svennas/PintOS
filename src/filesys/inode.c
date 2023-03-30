@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -19,6 +20,8 @@ struct inode_disk
     unsigned magic;                     /* Magic number. */
     uint32_t unused[125];               /* Not used. */
   };
+
+  struct lock open_close;    // To synch syscalls open() and close() 
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
@@ -61,6 +64,8 @@ static struct list open_inodes;
 void
 inode_init (void) 
 {
+  lock_init(&open_close);
+
   list_init (&open_inodes);
 }
 
@@ -111,6 +116,8 @@ inode_create (disk_sector_t sector, off_t length)
 struct inode *
 inode_open (disk_sector_t sector) 
 {
+  lock_acquire(&open_close);
+
   struct list_elem *e;
   struct inode *inode;
 
@@ -122,6 +129,9 @@ inode_open (disk_sector_t sector)
       if (inode->sector == sector) 
         {
           inode_reopen (inode);
+
+          lock_release(&open_close);
+
           return inode; 
         }
     }
@@ -129,7 +139,11 @@ inode_open (disk_sector_t sector)
   /* Allocate memory. */
   inode = malloc (sizeof *inode);
   if (inode == NULL)
+  {
+    lock_release(&open_close);
+
     return NULL;
+  }
 
   /* Initialize. */
   list_push_front (&open_inodes, &inode->elem);
@@ -138,6 +152,9 @@ inode_open (disk_sector_t sector)
   inode->deny_write_cnt = 0;
   inode->removed = false;
   disk_read (filesys_disk, inode->sector, &inode->data);
+
+  lock_release(&open_close);
+
   return inode;
 }
 
@@ -166,9 +183,15 @@ inode_get_inumber (const struct inode *inode)
 void
 inode_close (struct inode *inode) 
 {
+  lock_acquire(&open_close);
+
   /* Ignore null pointer. */
   if (inode == NULL)
+  {
+    lock_release(&open_close);
+
     return;
+  }
 
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
@@ -186,6 +209,8 @@ inode_close (struct inode *inode)
 
       free (inode); 
     }
+
+    lock_release(&open_close);
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who

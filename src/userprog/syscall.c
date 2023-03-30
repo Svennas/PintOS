@@ -201,11 +201,15 @@ int open (const char *file)
 {
   struct thread *t = thread_current();
   int fd = -1;
-  for(int i = FD_START; i < FD_END; i++) {
+  for(int i = FD_START; i < FD_END; i++) 
+  {
     fd = i;
-    if (t->fd_list[fd] == NULL) {
+    if (t->fd_list[fd] == NULL) 
+    {
       t->fd_list[fd] = filesys_open(file);
+
       if (t->fd_list[fd] == NULL) return -1;
+
       break;
     }
   }
