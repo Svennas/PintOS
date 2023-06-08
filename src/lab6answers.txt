@@ -194,6 +194,15 @@ Motivate your answer.
 
   - inodes: To deep probably
 
+  From the book: 
+  File objects typically belong to a single process, but inode objects do not. 
+  There is one file object for every instance of an open file, but always only 
+  a single inode object.
+
+  As on the "files" level every file object belongs to a single process, that 
+  is probably the level to implement the problem. When we are at this level we 
+  know that processes will be correclty locked when calling lock_acquire().
+    
 
 • Find the places in the code, where the disk is accessed outside
 read/write/open/close/create/remove system calls. Reconsider
