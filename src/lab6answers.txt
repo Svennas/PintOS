@@ -4,9 +4,11 @@ Answers to questions in lab 6:
   Think about why it is not a good idea.
 
     If you look the file itself the first thing is that you can't access the file 
-    or anything it contains. The biggest problem with no synch for file access is that 
-    multiple threads/processes can change in the file at the same time which can result
-    in a race condition. 
+    or anything it contains. This means that you can't read from it. Multiple 
+    processes should be able to read from the same file at the same time. 
+    The biggest problem with no synch for file access is that 
+    multiple threads/processes can change in the file at the same time which can 
+    result in a race condition. 
     But you can not prevent this by just locking the file. This just destroyes the 
     purpose of it. You should still be able to read from it. 
 
@@ -15,18 +17,18 @@ Answers to questions in lab 6:
   synchronization algorithm exist? Find pseudo code for the algorithm that prioritizes 
   readers.
 
-    It's a problem with concurrency where threads can not read/write from a file that is 
-    being written to from another thread. In particular we do not want more than one thread
-    modifying a file at at time. We may allow more threads to read from the file, is this
-    don't involve any modifying.
+    It's a problem with concurrency where threads can not read/write from a file that 
+    is being written to from another thread. In particular we do not want more than one 
+    thread modifying a file at at time. We may allow more threads to read from the file, 
+    as this don't involve any modifying.
     Modifications: 
-    1. The first problem is that no reader should wait for other readers to finish simply 
-    because a writer is waiting.
-    2. The second problem is that if a writer is waiting to access the object, no new readers 
-    may start reading.
+    1. The first problem is that no reader should wait for other readers to finish 
+    simply because a writer is waiting.
+    2. The second problem is that if a writer is waiting to access the object, no new 
+    readers may start reading.
     3. The third is that no thread should starve. Multiple processes are permitted to 
-    concurrently acquire a reader–writer lock in read mode, but only one process may acquire 
-    the lock for writing, as exclusive access is required for writers.
+    concurrently acquire a reader–writer lock in read mode, but only one process may 
+    acquire the lock for writing, as exclusive access is required for writers.
     
     Psuedo code (from wikipedia):
 
@@ -71,19 +73,17 @@ Answers to questions in lab 6:
       }
 
 
-• Think of a scenario where the concurrent access to a file system 
-with no synchronization causes a problem such as inconsistency or 
-corruption of the file system.
+• Think of a scenario where the concurrent access to a file system with no 
+synchronization causes a problem such as inconsistency or corruption of the file system.
 
   Two different threads tries to write to a file at the same time.
-  This leads to a corrupted file that probably can't be read from
-  later or the system crashes(????) (dont judge, me tired ).
+  This leads to a corrupted file that probably can't be read.
 
 
 • What is the difference between the inode and the file object?
 
   Inode:
-  An inode represents the layout of a file's data on disk. 
+  An inode represents the layout of a file's data on the disk. 
   Each inode is stored in one disk sector, limiting the number of
   block pointers that it can contain, supporting up to 8 MB files.
   An inode represents an individual file. When you write/read data 
@@ -91,6 +91,7 @@ corruption of the file system.
   File object:
   A file reads and writes to disk sector reads and writes. 
   A file object contains an inode and things like seek position. 
+  A file object represents a point of access to the data in an open file.
   Every process has its own object (not shared).
 
 
@@ -155,7 +156,7 @@ file content removed?
 
 
 • What happens if you attempt to remove an open file?
-    Don't know yet :/
+    Denied
 
 
 • How can you keep track of the position in a file?

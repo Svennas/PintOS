@@ -29,8 +29,8 @@ file_open (struct inode *inode)
       file->pos = 0;
       file->deny_write = false;
 
+      /* Initialize for readers-writers */
       file->readers_count = 0;
-
       lock_init(&(file->readers));
       lock_init(&(file->rw_mutex));
 
@@ -96,6 +96,7 @@ file_read (struct file *file, void *buffer, off_t size)
   lock_acquire(&(file->readers));   // Protect readers count
 
   file->readers_count--;
+  
   /* As soon as the counter reaches 0, give up access to the file to let write run. */
   if (file->readers_count == 0)
   {
