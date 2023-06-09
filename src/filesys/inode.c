@@ -172,14 +172,14 @@ inode_open (disk_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
-  lock_acquire(&open_close);
+  //lock_acquire(&open_close);
   if (inode != NULL) 
     {
       ASSERT(inode->open_cnt != 0);
       inode->open_cnt++;
     }
     
-  lock_release(&open_close);
+  //lock_release(&open_close);
   return inode;
 }
 

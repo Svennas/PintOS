@@ -15,12 +15,15 @@ static void do_format (void);
 
 struct lock remove_create;
 
+struct dir_lock;
+
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
 void
 filesys_init (bool format) 
 {
   lock_init(&remove_create);
+  //lock_init()
 
   filesys_disk = disk_get (0, 1);
   if (filesys_disk == NULL)
