@@ -32,7 +32,7 @@ file_open (struct inode *inode)
       /* Initialize for readers-writers */
       file->readers_count = 0;
       lock_init(&(file->readers));
-      lock_init(&(file->rw_mutex));
+      lock_init(&(file->rw_mutex)); // Mutex =  Mutually exclusive flag
 
       return file;
     }
@@ -194,6 +194,9 @@ file_seek (struct file *file, off_t new_pos)
 {
   ASSERT (file != NULL);
   ASSERT (new_pos >= 0);
+
+  //if (new_pos > sizeof(file)) new_pos = sizeof(file);
+
   file->pos = new_pos;
 }
 

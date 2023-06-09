@@ -23,6 +23,8 @@ struct inode_disk
 
   struct lock open_close;    // To synch syscalls open() and close() 
 
+  struct lock map_lock;       // For free_map_allocate and free_map_release
+
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
 static inline size_t
@@ -67,6 +69,8 @@ inode_init (void)
   lock_init(&open_close);
 
   list_init (&open_inodes);
+
+  lock_init(&map_lock);
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -92,6 +96,9 @@ inode_create (disk_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
+
+      lock_acquire(&map_lock);
+
       if (free_map_allocate (sectors, &disk_inode->start))
         {
           disk_write (filesys_disk, sector, disk_inode);
@@ -105,6 +112,9 @@ inode_create (disk_sector_t sector, off_t length)
             }
           success = true; 
         } 
+
+      lock_release(&map_lock);
+
       free (disk_inode);
     }
   return success;
@@ -162,11 +172,14 @@ inode_open (disk_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
+  lock_acquire(&open_close);
   if (inode != NULL) 
     {
       ASSERT(inode->open_cnt != 0);
       inode->open_cnt++;
     }
+    
+  lock_release(&open_close);
   return inode;
 }
 
@@ -202,9 +215,13 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
+          lock_acquire(&map_lock);
+
           free_map_release (inode->sector, 1);
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length)); 
+
+          lock_release(&map_lock);
         }
 
       free (inode); 

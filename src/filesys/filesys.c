@@ -78,11 +78,17 @@ filesys_open (const char *name)
   struct dir *dir = dir_open_root ();
   struct inode *inode = NULL;
 
+  lock_acquire(&remove_create);
+
   if (dir != NULL)
     dir_lookup (dir, name, &inode);
   dir_close (dir);
 
-  return file_open (inode);
+  struct file *f = file_open (inode);
+
+  lock_release(&remove_create);
+
+  return f;
 }
 
 /* Deletes the file named NAME.
