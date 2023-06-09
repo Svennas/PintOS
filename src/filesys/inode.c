@@ -138,9 +138,9 @@ inode_open (disk_sector_t sector)
       inode = list_entry (e, struct inode, elem);
       if (inode->sector == sector) 
         {
-          inode_reopen (inode);
+          lock_release(&open_close);  // Moved to before reopen()
 
-          lock_release(&open_close);
+          inode_reopen (inode);
 
           return inode; 
         }
@@ -172,14 +172,14 @@ inode_open (disk_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
-  //lock_acquire(&open_close);
+  lock_acquire(&open_close);
   if (inode != NULL) 
     {
       ASSERT(inode->open_cnt != 0);
       inode->open_cnt++;
     }
     
-  //lock_release(&open_close);
+  lock_release(&open_close);
   return inode;
 }
 
