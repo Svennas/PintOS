@@ -30,7 +30,6 @@ process_execute (const char *cmd_line)
     status->exit_status = -1; // So we know that it failed
     status->alive_count = 1;  // Parent is still alive
     return TID_ERROR;
-  }
 
   /* Make a copy of cmd_line.
      Otherwise there's a race between the caller and load(). */
