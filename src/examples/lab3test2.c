@@ -11,13 +11,16 @@
 int
 main (int argc, char *argv[])
 {
-
+	printf("In lab3test2\n");
   int pid=-1;
   for(int i=0;i<5;i++)
 	{
 	pid=exec("printf");
   	printf("Child %d process ID: %d\n",i,pid);
 	}
+
+	printf("Lab3test2 outside for loop\n");
+	printf("EXIT_SUCCESS: %d\n",EXIT_SUCCESS);
 
   return EXIT_SUCCESS;
 }

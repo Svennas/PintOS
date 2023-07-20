@@ -9,6 +9,11 @@ struct file
     struct inode *inode;        /* File's inode. */
     off_t pos;                  /* Current position. */
     bool deny_write;            /* Has file_deny_write() been called? */
+
+    /* Added in lab 6 */
+    int readers_count;          /* Keep check of the amount current readers. */
+    struct lock rw_mutex;       /* Locks the other function from running. */
+    struct lock readers;        /* Controll changes to readers_count. */
   };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -23,6 +28,12 @@ file_open (struct inode *inode)
       file->inode = inode;
       file->pos = 0;
       file->deny_write = false;
+
+      /* Initialize for readers-writers */
+      file->readers_count = 0;
+      lock_init(&(file->readers));
+      lock_init(&(file->rw_mutex)); // Mutex =  Mutually exclusive flag
+
       return file;
     }
   else
@@ -68,8 +79,31 @@ file_get_inode (struct file *file)
 off_t
 file_read (struct file *file, void *buffer, off_t size) 
 {
+  lock_acquire(&(file->readers));   // Protect readers count
+
+  file->readers_count++;  
+   
+  if (file->readers_count == 1) // If this is the first reader
+  {
+    lock_acquire(&(file->rw_mutex));
+  }
+
+  lock_release(&(file->readers));
+
   off_t bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
   file->pos += bytes_read;
+
+  lock_acquire(&(file->readers));   // Protect readers count
+
+  file->readers_count--;
+  
+  /* As soon as the counter reaches 0, give up access to the file to let write run. */
+  if (file->readers_count == 0)
+  {
+    lock_release(&(file->rw_mutex));
+  }
+  lock_release(&(file->readers));
+
   return bytes_read;
 }
 
@@ -94,8 +128,13 @@ file_read_at (struct file *file, void *buffer, off_t size, off_t file_ofs)
 off_t
 file_write (struct file *file, const void *buffer, off_t size) 
 {
+  lock_acquire(&(file->rw_mutex));
+
   off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
   file->pos += bytes_written;
+
+  lock_release(&(file->rw_mutex));
+
   return bytes_written;
 }
 
@@ -155,6 +194,9 @@ file_seek (struct file *file, off_t new_pos)
 {
   ASSERT (file != NULL);
   ASSERT (new_pos >= 0);
+
+  //if (new_pos > sizeof(file)) new_pos = sizeof(file);
+
   file->pos = new_pos;
 }
 

@@ -90,7 +90,7 @@ intr_enable (void)
 enum intr_level
 intr_disable (void) 
 {
-  enum intr_level old_level = intr_get_level ();
+  enum intr_level old_level = intr_get_level();
 
   /* Disable interrupts by clearing the interrupt flag.
      See [IA32-v2b] "CLI" and [IA32-v3a] 5.8.1 "Masking Maskable

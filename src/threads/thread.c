@@ -1,16 +1,5 @@
 #include "threads/thread.h"
-#include <debug.h>
-#include <stddef.h>
-#include <random.h>
-#include <stdio.h>
-#include <string.h>
-#include "threads/flags.h"
-#include "threads/interrupt.h"
-#include "threads/intr-stubs.h"
-#include "threads/palloc.h"
-#include "threads/switch.h"
-#include "threads/synch.h"
-#include "threads/vaddr.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -93,8 +82,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  /* Added in lab 3*/
-  //list_init(&initial_thread->child_status_list);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -163,7 +150,8 @@ tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  printf("thread create start\n");
+  //printf("(In thread_create) Current thread ID: %d\n",thread_current()->tid);
+
   struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
@@ -176,7 +164,7 @@ thread_create (const char *name, int priority,
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
     return TID_ERROR;
-
+ 
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
@@ -186,7 +174,7 @@ thread_create (const char *name, int priority,
   kf->eip = NULL;
   kf->function = function;
   kf->aux = aux;
-
+  
   /* Stack frame for switch_entry(). */
   ef = alloc_frame (t, sizeof *ef);
   ef->eip = (void (*) (void)) kernel_thread;
@@ -197,9 +185,8 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  printf("thread create end\n");
-
-  return tid;
+  //printf("end of thread_create\n");
+  return tid; 
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -281,16 +268,71 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
+
+  struct thread* curr = thread_current(); 
+  //printf("\n(In thread exit) Current thread ID: %d\n\n",thread_current()->tid);
+
+  struct lock block;
+  lock_init(&block);
+
+  /* Parent threads go here, which means parent can exit before child. */
+  if (!(list_empty(&curr->children))) 
+  {
+    while (!list_empty (&curr->children))
+    {
+      //printf("in while\n");
+      struct list_elem *e = list_pop_front (&curr->children);
+      
+      struct parent_child* status = list_entry (e, struct parent_child, child);
+
+      lock_acquire(&block);
+
+      status->alive_count--;    // Remove one for the parent.
+
+      if (status->alive_count == 0) 
+      {
+        lock_release(&block);
+        //printf("Child is dead\n");
+        free(status);     // Free if both are dead
+      }
+      //else printf("Child is still alive\n");
+    }
+  }
+
+    /* Thread with no children. */
+    if (curr->parent_info != NULL)   
+    {   // Check that it's not init thread with no child
+      lock_acquire(&block);
+
+      curr->parent_info->alive_count--;
+      //curr->parent_info->exit_status = SUCCESS;
+
+      if (curr->parent_info->alive_count == 0)
+      {
+        lock_release(&block);
+        //printf("Parent is dead\n");
+        free(curr->parent_info);
+      }
+      else
+      {
+        lock_release(&block);
+        //printf("Parent is still alive\n");
+
+        /* Wake up parent in process_wait if it exists. */
+        sema_up(&(curr->parent_info->sleep)); 
+      }
+    }
+
   process_exit ();
 #endif
 
   /* Just set our status to dying and schedule another process.
      We will be destroyed during the call to schedule_tail(). */
   intr_disable ();
-  printf("before status\n");
+  //printf("After intr_disable\n");
   thread_current ()->status = THREAD_DYING;
-  printf("after status\n");
-  schedule ();
+  // No prints here
+  schedule ();  //Schedules new process. Next thread = idle when exit on init_thread.
   NOT_REACHED ();
 }
 
@@ -442,6 +484,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  /* Added in Lab 3. */
+  list_init(&t->children);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

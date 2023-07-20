@@ -1,3 +1,7 @@
 {
-    "editor.renderWhitespace": "none"
+    "editor.renderWhitespace": "none",
+    "files.associations": {
+        "process.h": "c",
+        "syscall.h": "c"
+    }
 }

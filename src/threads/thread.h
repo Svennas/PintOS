@@ -2,8 +2,21 @@
 #define THREADS_THREAD_H
 
 #include <debug.h>
+#include <stddef.h>
+#include <random.h>
 #include <list.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "threads/flags.h"
+#include "threads/interrupt.h"
+#include "threads/intr-stubs.h"
+#include "threads/palloc.h"
+#include "threads/switch.h"
+#include "threads/synch.h"
+#include "threads/vaddr.h"
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +36,10 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* Exit status. */
+#define SUCCESS 0                       /* Successfull thread exit. */
+#define FAIL -1                       /* Failed thread exit. */
 
 /* A kernel thread or user process.
 
@@ -91,9 +108,11 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    /* Added for lab 3. */
-    struct list child_status_list;
-    struct parent_child *parent_status;
+    
+    /* Added for lab 3. */ 
+    struct list children;              /* List with all the structs shared with children.*/
+    struct parent_child* parent_info;  /* Pointer to struct shared with parent.*/
+    struct semaphore wait;             /* To wait until child is done with setup.*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -104,25 +123,6 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-};
-
-/* Added for lab 3. */
-/* This struct is shared betwwen parent thread and all its child threads. */
-struct parent_child
-{
-   char *thread_name;           /* Saves the thread name for debugging. */
-   int exit_status;             /* Checks if ready to exit. 1 if ready, 0 otherwise. */
-   struct lock *parent_block;   /* Used to block parent while starting child is executing. */
-   // ^ before start_process()
-   bool load_success;           /* Used to check if load of child process was successful. */
-   int alive_count;             /* Decides who should free dynamically allocated memory. */
-                                /* or keeps count of the amount of children. */
-   struct list_elem child_elem; /* List element to be added in child_status_list. */
-   tid_t child_tid;             /* Thread identifier for the child thread. */
-
-  //struct semaphore parent_block;
-  //struct thread *parent;  /* Pointer to parent thread. */
-  //struct thread *child;   /* Pointer to child thread. */
 };
 
 /* If false (default), use round-robin scheduler.
