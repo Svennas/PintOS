@@ -1,0 +1,28 @@
+66 tests for the lab implementations: 
+
+- Go to src/userprog
+
+- Clean up everything with "make clean"
+
+- Run "make"
+
+- Go to src/userprog/build.
+
+- Create a new simulated disk:
+	- "pintos-mkdisk fs.dsk 2"
+	- "pintos --qemu -- -f -q"
+
+- Run "make check".
+	All 66 tests should pass if the implementation is correct.
+
+-----------------------------------------
+
+Testing readers-writers algorithm:
+
+- Go to src/userprog
+
+- Run "./start_pfs.sh"
+	- Runs the user programs: pfs, pfs reader, pfs writer
+
+- Test the ultimate concurrency test, the "recursor ng" test 
+	- Run "./start_recursor.sh" 

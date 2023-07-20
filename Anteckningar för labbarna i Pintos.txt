@@ -1,0 +1,27 @@
+Check memory leaks with Valgrind: valgrind --tool=memcheck --leak-check=yes ./your-program
+
+
+Compile src/examples with make in that dir. Modify src/examples/Makefile
+to compile own user programs (instructions inside Makefile). 
+Write all your test programs in the src/examples directory.
+
+Before running user programs first you have to create a simulated disk, format it and copy user programs there.
+Go to userprog and run make. Then, go to userprog/build and issue the command:
+>>	pintos-mkdisk fs.dsk 2		This will create a file fs.dsk with a 2MB simulated disk in the directory.
+Format the disk with the command:
+>>	pintos --qemu -- -f -q
+Copy Pintos user programs to the simulated disk with the command: (Remember to copy already compiled programs (binaries), not the source code files.)
+>>	pintos --qemu -p programname -a newname -- -q
+Most probably you will copy user program from the src/examples directory. Then the command will look like this:
+>>	pintos --qemu -p ../../examples/programname -a programname -- -q
+If you need to copy a file from the simulated disk, use the command:
+>>	pintos --qemu -g filename -- -q
+or
+>>	pintos --qemu -g filename -a newname -- -q
+As you see, the only difference is in the switch: -p is used to put files to the disk
+and -g to get a file from the disk. If you need to run a user program that has been already copied:
+>>	pintos --qemu -- run programname
+Furthermore you can also list files with ls, remove files with rm and print contents of a file 
+with cat. Several of these commands can be run on the same line, e.g.:
+>>	pintos --qemu -- ls rm a rm b ls
+will list files, delete the files a and b and then list files again.
